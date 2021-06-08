@@ -1,0 +1,26 @@
+Directions to Tank Commander
+
+To Play, either open the MV4202 workspace in Visual C++ and run from there or go to the
+debug directory of the OpenGL folder and double click on the OpenGL.exe file.
+
+To play single player, click on Game->New Single Player...
+
+To play two player, click on Game->New Multi-Player..., then click on the Network menu item (it will activate when you put your cursor over it), and click on Host to host a game or on Join to join a game.  When you click on Host, the game will not start until someone joins your game.  If you click on Join, a popup dialog will appear for you to enter the address of the game you want to join.
+
+When you are done with a game, click on Network->Disconnect and then on Game->Quit.
+
+Controls:
+Up-arrow: accelerate (max speed 20)
+Down-arrow: decelerate/reverse (max speed -5)
+Right-arrow: turn right
+Left-arrow: turn left
+f: fire main gun
+m: latch onto machine gun to move it around with your viewpoint
+spacebar: fire machine gun
+left mouse button: when the machine gun is latched this will fire the machine gun while you move it around
+
+Each game runs 10 minutes.  You gain points for killing objects in the world and will lose points for shooting friendly tanks (except the opponent tank), which are covered in forest camo.  When you start the game, you will start in one of two positions (out of 4; two are for the host, and two are for the joiner).  When you die, you will respawn in one of the four positions.
+
+Enjoy!
+
+Rob Michael

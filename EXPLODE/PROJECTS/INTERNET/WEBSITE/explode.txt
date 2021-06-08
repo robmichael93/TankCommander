@@ -1,0 +1,8 @@
+Explode.Exe is a Delphi+OpenGL mprogram that simulates an explosion with
+particles (3072 tiny triangles). In software mode the frame rate is decent.
+With hardware acceleration the explosion may be almost too fast to see.
+
+When the program is running, press the space bar each time you want to see
+an explosion.
+
+

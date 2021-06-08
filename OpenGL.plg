@@ -1,0 +1,60 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: OpenGL - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\ROBMIC~1\LOCALS~1\Temp\RSP64.tmp" with contents
+[
+/nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_AFXDLL" /D "_MBCS" /Fp"Debug/OpenGL.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"C:\WINDOWS\Profiles\Rob Michael\My Documents\MV4202\OpenGL\MyOpenGLView.cpp"
+"C:\WINDOWS\Profiles\Rob Michael\My Documents\MV4202\OpenGL\SinglePlayerDialog.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ROBMIC~1\LOCALS~1\Temp\RSP64.tmp" 
+Creating temporary file "C:\DOCUME~1\ROBMIC~1\LOCALS~1\Temp\RSP65.tmp" with contents
+[
+opengl32.lib glu32.lib glaux.lib winmm.lib /nologo /subsystem:windows /incremental:yes /pdb:"Debug/OpenGL.pdb" /debug /machine:I386 /out:"Debug/OpenGL.exe" /pdbtype:sept 
+".\Debug\Bullet.obj"
+".\Debug\console.obj"
+".\Debug\ConsoleDialog.obj"
+".\Debug\Draw.obj"
+".\Debug\explosion.obj"
+".\Debug\Floor.obj"
+".\Debug\Foe.obj"
+".\Debug\fontClasses.obj"
+".\Debug\Friend.obj"
+".\Debug\Good.obj"
+".\Debug\House.obj"
+".\Debug\JoinDialog.obj"
+".\Debug\MachineGun.obj"
+".\Debug\MainFrm.obj"
+".\Debug\MySocket.obj"
+".\Debug\normals.obj"
+".\Debug\OpenGL.obj"
+".\Debug\OpenGLDoc.obj"
+".\Debug\OpenGLView.obj"
+".\Debug\Pine.obj"
+".\Debug\Pyramid.obj"
+".\Debug\RotationDialog.obj"
+".\Debug\Shell.obj"
+".\Debug\Silo.obj"
+".\Debug\SmallPine.obj"
+".\Debug\StdAfx.obj"
+".\Debug\OpenGL.res"
+".\Debug\MyOpenGLView.obj"
+".\Debug\SinglePlayerDialog.obj"
+]
+Creating command line "link.exe @C:\DOCUME~1\ROBMIC~1\LOCALS~1\Temp\RSP65.tmp"
+<h3>Output Window</h3>
+Compiling...
+Error spawning cl.exe
+
+
+
+<h3>Results</h3>
+OpenGL.exe - 1 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
