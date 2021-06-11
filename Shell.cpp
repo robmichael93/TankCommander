@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "Shell.h"
-#include "OpenGLDoc.h"
-#include "OpenGLView.h"
 //#include <GL/glut.h>
 #include <math.h>
 

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Pyramid.h"
 #include "normals.h"
-#include <math.h>
+//#include <math.h>
 
 //---------------------------------------------------------------------
 // Method: init

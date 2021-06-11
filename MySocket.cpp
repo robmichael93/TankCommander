@@ -7,11 +7,9 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 #include "stdafx.h"
-#include "OpenGL.h"
 #include "MySocket.h"
-#include "MyOpenGLView.cpp"
-
-
+#include "OpenGLDoc.h"
+#include "MyOpenGLView.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // MySocket
@@ -23,7 +21,6 @@ CMySocket::CMySocket()
 CMySocket::~CMySocket()
 {
 }
-
 
 // Do not edit the following lines, which are needed by ClassWizard.
 #if 0
@@ -53,8 +50,9 @@ void CMySocket::OnAccept(int iErrorCode)
 	}
 	else
 	{
-		AfxMessageBox("Error Code: " + (CString)iErrorCode);
+//		AfxMessageBox("Error Code: " + (CString)iErrorCode);
 	}
+   CSocket::OnAccept(iErrorCode);
 }
 
 // none of these functions should execute, but they are here because they help
@@ -67,7 +65,7 @@ void CMySocket::OnConnect(int iErrorCode)
 	{
 		((CMyOpenGLView*)m_pWnd)->OnConnect();
 	}
-
+   CSocket::OnConnect(iErrorCode);
 }
 
 void CMySocket::OnClose(int iErrorCode)
@@ -77,7 +75,7 @@ void CMySocket::OnClose(int iErrorCode)
 	{
 		((CMyOpenGLView*)m_pWnd)->OnClose();
 	}
-
+   CSocket::OnClose(iErrorCode);
 }
 
 void CMySocket::OnReceive(int iErrorCode)
@@ -87,7 +85,7 @@ void CMySocket::OnReceive(int iErrorCode)
 	{
 		((CMyOpenGLView*)m_pWnd)->OnReceive();
 	}
-
+   CSocket::OnReceive(iErrorCode);
 }
 
 void CMySocket::OnSend(int iErrorCode)
@@ -97,7 +95,7 @@ void CMySocket::OnSend(int iErrorCode)
 	{
 		((CMyOpenGLView*)m_pWnd)->OnSend();
 	}
-
+   CSocket::OnSend(iErrorCode);
 }
 
 // eof MySocket.cpp

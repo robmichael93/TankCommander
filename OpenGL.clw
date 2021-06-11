@@ -15,17 +15,17 @@ Class3=COpenGLView
 Class4=CMainFrame
 
 ResourceCount=5
-Resource1=IDD_ABOUTBOX
+Resource1=IDD_CONSOLE
 Class5=CAboutDlg
 Class6=CMyOpenGLView
-Resource2=IDD_ROTATION_DIALOG
+Resource2=IDR_MAINFRAME
 Class7=CRotationDialog
-Resource3=IDD_CONSOLE
+Resource3=IDD_ABOUTBOX
 Class8=CConsoleDialog
 Class9=CMySocket
 Class10=CMultiPlayerDialog
 Class11=CSinglePlayerDialog
-Resource4=IDR_MAINFRAME
+Resource4=IDD_ROTATION_DIALOG
 Class12=CJoinDialog
 Resource5=IDD_JOIN_DIALOG
 
@@ -56,7 +56,7 @@ Type=0
 HeaderFile=MainFrm.h
 ImplementationFile=MainFrm.cpp
 Filter=T
-LastObject=CMainFrame
+LastObject=ID_HOST
 
 
 
@@ -111,7 +111,7 @@ HeaderFile=MyOpenGLView.h
 ImplementationFile=MyOpenGLView.cpp
 BaseClass=COpenGLView
 Filter=C
-LastObject=ID_QUIT
+LastObject=CMyOpenGLView
 VirtualFilter=VWC
 
 [DLG:IDD_ROTATION_DIALOG]

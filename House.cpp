@@ -58,7 +58,7 @@ void House::init(float xPos, float yPos, float zPos, float houseWidth,
 
 	GLfloat halfLength = houseLength/2.0f;
 
-   radius = (GLfloat)(sqrt(houseWidth * houseWidth + houseLength * houseLength) / 2.0f);
+    GLfloat radius = (GLfloat)(sqrt(houseWidth * houseWidth + houseLength * houseLength)/ 2.0f);
 
 	// define the two colors
 	GLfloat color1[3] = { 0.0f, 0.0f, 0.0f };

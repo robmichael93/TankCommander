@@ -30,7 +30,6 @@
 
 using namespace std;
 
-
 #define NUMBER_OF_ENEMIES 20
 #define NUMBER_OF_HOUSES 58
 #define NUMBER_OF_PYRAMIDS 20
@@ -118,16 +117,19 @@ protected:
 	afx_msg void OnSingle();
 	afx_msg void OnMulti();
 	afx_msg void OnQuit();
+   afx_msg LRESULT OnMCINotify(WPARAM wParam, LPARAM lParam);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
    // Draw scene objects
-   virtual void drawScene();
+   void drawScene();
+
+   DWORD PlayMusic(LPSTR);			// Plays MIDI files
 
    // Set the view point
-   virtual void setViewPoint();
+   void setViewPoint();
 
-   virtual void updateScene();
-   virtual BOOL OpenGLInit();
+   void updateScene();
+   BOOL OpenGLInit();
 
    GLfloat translationVector[3];
 
@@ -180,7 +182,7 @@ protected:
    bool startGame;
    bool gameOver;
    bool playedFinalSound;
-   int spawnSites[4][3];
+   GLfloat spawnSites[4][3];
    bool spawnSiteActive[4];
    int spawnSite;
 
@@ -188,9 +190,13 @@ protected:
 
    CString m_ip;
 	int m_iPort;
-	CMySocket m_clientSocket;
-	CMySocket m_serverSocket;
-   CMySocket m_receiveSocket;
+	CMySocket m_connectSocket;
+	CMySocket m_listenSocket;
+
+   MCI_OPEN_PARMS mciOpenParms;
+   MCI_PLAY_PARMS mciPlayParms;
+   UINT wDeviceID;
+   char* backgroundMusic;
 
    CJoinDialog joinDialog;
 

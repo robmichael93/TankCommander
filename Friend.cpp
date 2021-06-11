@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "Friend.h"
-#include "OpenGLDoc.h"
-#include "OpenGLView.h"
 #include "normals.h"
 //---------------------------------------------------------------------
 

@@ -74,6 +74,7 @@ protected:
 	virtual afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg void OnToggleLight1();
 	afx_msg void OnToggleLight2();
+   virtual afx_msg LRESULT OnMCINotify(WPARAM wParam, LPARAM lParam);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 

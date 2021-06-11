@@ -148,6 +148,10 @@ SOURCE=.\MainFrm.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\MyOpenGLView.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\MySocket.cpp
 # End Source File
 # Begin Source File
@@ -314,6 +318,10 @@ SOURCE=.\SmallPine.h
 # Begin Source File
 
 SOURCE=.\StdAfx.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\Thread.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"

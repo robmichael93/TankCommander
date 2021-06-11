@@ -1,7 +1,5 @@
 #include "stdafx.h"
 #include "Silo.h"
-#include "OpenGLDoc.h"
-#include "OpenGLView.h"
 
 //---------------------------------------------------------------------
 // Method:  init

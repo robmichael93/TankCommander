@@ -21,7 +21,7 @@ protected: // create from serialization only
 public:
 
 protected:
-   console con;
+ //  console con;
 // Operations
 public:
 

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Foe.h"
-#include "OpenGLDoc.h"
-#include "OpenGLView.h"
+//#include "OpenGLDoc.h"
+//#include "OpenGLView.h"
 #include "normals.h"
 //---------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Bullet.h"
-#include "OpenGLDoc.h"
-#include "OpenGLView.h"
+//#include "OpenGLDoc.h"
+//#include "OpenGLView.h"
 //#include <GL/glut.h>
 #include <math.h>
 

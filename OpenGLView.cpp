@@ -28,6 +28,7 @@ BEGIN_MESSAGE_MAP(COpenGLView, CView)
 	ON_WM_CREATE()
 	ON_WM_SIZE()
 	ON_WM_KEYDOWN()
+   ON_MESSAGE(MM_MCINOTIFY, OnMCINotify)
 	ON_COMMAND(ID_RESTORE_VIEW, OnRestoreView)
 	ON_COMMAND(ID_SOLID, OnSolid)
 	ON_COMMAND(ID_WIREFRAME, OnWireframe)
@@ -200,6 +201,9 @@ BOOL COpenGLView::OpenGLInit()
 
 	// Cull the back faces of polygons
 	glPolygonMode( GL_BACK, GL_LINE );
+
+   glCullFace(GL_BACK);
+   glEnable(GL_CULL_FACE);
 
 	// specify the clear color
 	glClearColor( clearColor[0], clearColor[1], clearColor[2], clearColor[3] );
@@ -731,4 +735,8 @@ void COpenGLView::OnToggleLight2()
 	InvalidateRect( 0, FALSE );
 	GetParent()->PostMessage(WM_PAINT);
 	
+}
+
+LRESULT COpenGLView::OnMCINotify(WPARAM wParam, LPARAM lParam) {
+   return 0L;
 }

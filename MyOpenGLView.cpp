@@ -21,6 +21,24 @@ static char THIS_FILE[] = __FILE__;
 
 IMPLEMENT_DYNCREATE(CMyOpenGLView, COpenGLView)
 
+BEGIN_MESSAGE_MAP(CMyOpenGLView, COpenGLView)
+	//{{AFX_MSG_MAP(CMyOpenGLView)
+	ON_WM_RBUTTONDOWN()
+	ON_WM_KEYDOWN()
+	ON_WM_MOUSEMOVE()
+	ON_COMMAND(ID_COLLISION_ON, OnCollisionOn)
+	ON_COMMAND(ID_COLLISION_OFF, OnCollisionOff)
+	ON_COMMAND(ID_HOST, OnHost)
+	ON_COMMAND(ID_JOIN, OnJoin)
+	ON_COMMAND(ID_DISCONNECT, OnDisconnect)
+	ON_COMMAND(ID_SINGLE, OnSingle)
+	ON_COMMAND(ID_MULTI, OnMulti)
+	ON_COMMAND(ID_QUIT, OnQuit)
+   ON_MESSAGE(MM_MCINOTIFY, OnMCINotify)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+
 CMyOpenGLView::CMyOpenGLView(): azimuth(0.0), elevation(0.0), rotation(0.0)
 {
    COpenGLView::COpenGLView( );
@@ -28,37 +46,37 @@ CMyOpenGLView::CMyOpenGLView(): azimuth(0.0), elevation(0.0), rotation(0.0)
 
 CMyOpenGLView::~CMyOpenGLView()
 {
-   for(int py = 0; py < pyramid.size(); py++){
+   for(int py = 0; py < (int) pyramid.size(); py++){
       delete pyramid[py];
    }
-   for(int f = 0; f < friendly.size(); f++){
+   for(int f = 0; f < (int) friendly.size(); f++){
       delete friendly[f];
    }
-   for(int e = 0; e < enemy.size(); e++){
+   for(int e = 0; e < (int) enemy.size(); e++){
       delete enemy[e];
    }
-   for(int h = 0; h < house.size(); h++){
+   for(int h = 0; h < (int) house.size(); h++){
       delete house[h];
    }
-   for(int s = 0; s < silo.size(); s++){
+   for(int s = 0; s < (int) silo.size(); s++){
       delete silo[s];
    }   
-   for(int i = 0; i < pine.size(); i++){
+   for(int i = 0; i < (int) pine.size(); i++){
 	   delete pine[i];
    }
-   for(int j = 0; j < smallPine.size(); j++){
+   for(int j = 0; j < (int) smallPine.size(); j++){
 	   delete smallPine[j];
    }
-   for (i = 0; i < shells.size(); i++) {
+   for (i = 0; i < (int) shells.size(); i++) {
       delete shells[i];
    }
-   for (i = 0; i < bullets.size(); i++) {
+   for (i = 0; i < (int) bullets.size(); i++) {
       delete bullets[i];
    }
-   for (i = 0; i < oppShells.size(); i++) {
+   for (i = 0; i < (int) oppShells.size(); i++) {
       delete oppShells[i];
    }
-   for (i = 0; i < oppBullets.size(); i++) {
+   for (i = 0; i < (int) oppBullets.size(); i++) {
       delete oppBullets[i];
    }
 }
@@ -72,9 +90,8 @@ BOOL CMyOpenGLView::OpenGLInit() {
    m_iPort = 12345;
    multiPlayer = false;
    server = false;
-	m_serverSocket.SetParent(this);
-   m_receiveSocket.SetParent(this);
-	m_clientSocket.SetParent(this);
+	m_listenSocket.SetParent(this);
+	m_connectSocket.SetParent(this);
 
    xDist = yDist = zDist = minDist = 0.0f;
    collisionDetection = true;
@@ -88,6 +105,7 @@ BOOL CMyOpenGLView::OpenGLInit() {
    startGame = false;
    gameOver = false;
    playedFinalSound = false;
+   backgroundMusic = "metalGear.mid";
 
    setUpLighting();
    setUpTextures();
@@ -98,18 +116,18 @@ BOOL CMyOpenGLView::OpenGLInit() {
    opponent.init(textNames[6]);
    oppMG.init();
 
-   spawnSites[0][0] = -290;
-   spawnSites[0][1] = -360;
-   spawnSites[0][2] = 315;
-   spawnSites[1][0] = 200;
-   spawnSites[1][1] = -450;
-   spawnSites[1][2] = 25;
-   spawnSites[2][0] = 200;
-   spawnSites[2][1] = 350;
-   spawnSites[2][2] = 145;
-   spawnSites[3][0] = -350;
-   spawnSites[3][1] = 150;
-   spawnSites[3][2] = 260;
+   spawnSites[0][0] = -290.0;
+   spawnSites[0][1] = -360.0;
+   spawnSites[0][2] = 315.0;
+   spawnSites[1][0] = 200.0;
+   spawnSites[1][1] = -450.0;
+   spawnSites[1][2] = 25.0;
+   spawnSites[2][0] = 200.0;
+   spawnSites[2][1] = 350.0;
+   spawnSites[2][2] = 145.0;
+   spawnSites[3][0] = -350.0;
+   spawnSites[3][1] = 150.0;
+   spawnSites[3][2] = 260.0;
    spawnSiteActive[0] = spawnSiteActive[1] = spawnSiteActive[2] = spawnSiteActive[3] = false;
 
    srand(timeGetTime());
@@ -179,67 +197,67 @@ BOOL CMyOpenGLView::OpenGLInit() {
    }
    for(int street1 = 0; street1 < 10; street1++){
       int x1 = street1 * 50;
-      house[street1]->init(-250 + x1, 3.75, -15, 12, 10, 7.5, 5,
+      house[street1]->init(-250.0f + x1, 3.75f, -15.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 			                  textNames[1], textNames[5]);
    }
    for(int street2 = 10; street2 < 20; street2++){
       int x2 = (street2 - 10) * 50;
-      house[street2]->init(-250 + x2, 3.75, -65, 12, 10, 7.5, 5,
+      house[street2]->init(-250.0f + x2, 3.75f, -65.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 									textNames[1], textNames[5]);
    }
    for(int street3 = 20; street3 < 30; street3++){
       int x3 = (street3 - 20) * 50;
-      house[street3]->init(-250 + x3, 3.75, -115, 12, 10, 7.5, 5,
+      house[street3]->init(-250.0f + x3, 3.75f, -115.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 									textNames[1], textNames[5]);
    }
    for(int street4 = 30; street4 < 40; street4++){
       int x4 = (street4 - 30) * 50;
-      house[street4]->init(-250 + x4, 3.75, -165, 12, 10, 7.5, 5,
+      house[street4]->init(-250.0f + x4, 3.75f, -165.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 									textNames[1], textNames[5]);
    }
    for(int street5 = 40; street5 < 50; street5++){
       int x5 = (street5 - 40) * 50;
-      house[street5]->init(-250 + x5, 3.75, -215, 12, 10, 7.5, 5,
+      house[street5]->init(-250.0f + x5, 3.75f, -215.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 									textNames[1], textNames[5]);
    }
    //BARN
-   house[50]->init(200 , 5, 355, 20, 30, 10, 10,
+   house[50]->init(200.0f , 5.0f, 355.0f, 20.0f, 30.0f, 10.0f, 10.0f,
 						 textNames[1], textNames[5]); 
    //FARMHOUSES
-   house[51]->init(250 , 3.75, 300, 12, 10, 7.5, 5,
+   house[51]->init(250.0f , 3.75f, 300.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 						 textNames[1], textNames[5]);
-   house[52]->init(260 , 3.75, 320, 12, 10, 7.5, 5,
+   house[52]->init(260.0f , 3.75f, 320.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 						 textNames[1], textNames[5]);  
    //SHED
-   house[53]->init(180 , 1.5, 360, 5, 4, 3, 2,
+   house[53]->init(180.0f , 1.5f, 360.0f, 5.0f, 4.0f, 3.0f, 2.0f,
 						 textNames[1], textNames[5]);  
 
    //Second Farm
 
    //BARN
-   house[54]->init(-500 , 5, 600, 20, 30, 10, 10,
+   house[54]->init(-500.0f , 5.0f, 600.0f, 20.0f, 30.0f, 10.0f, 10.0f,
 						 textNames[1], textNames[5]); 
    //FARMHOUSES
-   house[55]->init(-520 , 3.75, 650, 12, 10, 7.5, 5,
+   house[55]->init(-520.0f , 3.75f, 650.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 						 textNames[1], textNames[5]);
-   house[56]->init(-480 , 3.75, 650, 12, 10, 7.5, 5,
+   house[56]->init(-480.0f , 3.75f, 650.0f, 12.0f, 10.0f, 7.5f, 5.0f,
 						 textNames[1], textNames[5]);  
    //SHED
-   house[57]->init(-520 , 1.5, 600, 5, 4, 3, 2,
+   house[57]->init(-520.0f , 1.5f, 600.0f, 5.0f, 4.0f, 3.0f, 2.0f,
 						 textNames[1], textNames[5]);  
 
 
    for(int s = 0; s < NUMBER_OF_SILOS; s++){
       silo.push_back(new Silo());
    }   
-	silo[0]->init(180.0, 10.0, 375.0, 2.0, 20.0, textNames[0], textNames[5]); 
-	silo[1]->init(220.0, 10.0, 380.0, 2.0, 20.0, textNames[0], textNames[5]); 
+	silo[0]->init(180.0f, 10.0f, 375.0f, 2.0f, 20.0f, textNames[0], textNames[5]); 
+	silo[1]->init(220.0f, 10.0f, 380.0f, 2.0f, 20.0f, textNames[0], textNames[5]); 
 
 	//Second Farm
 
-	silo[2]->init(-480.0, 10.0, 600.0, 2.0, 20.0, textNames[0], textNames[5]); 
-	silo[3]->init(-480.0, 10.0, 590.0, 2.0, 20.0, textNames[0], textNames[5]); 
-	silo[4]->init(-480.0, 10.0, 580.0, 2.0, 20.0, textNames[0], textNames[5]); 
+	silo[2]->init(-480.0f, 10.0f, 600.0f, 2.0f, 20.0f, textNames[0], textNames[5]); 
+	silo[3]->init(-480.0f, 10.0f, 590.0f, 2.0f, 20.0f, textNames[0], textNames[5]); 
+	silo[4]->init(-480.0f, 10.0f, 580.0f, 2.0f, 20.0f, textNames[0], textNames[5]); 
 
   //888888888888888888888888888888888888888888888888888888888888888
    for(int i = 0; i < NUMBER_OF_PINES; i++){
@@ -385,19 +403,6 @@ BOOL CMyOpenGLView::OpenGLInit() {
    return TRUE;
 }
 
-BEGIN_MESSAGE_MAP(CMyOpenGLView, COpenGLView)
-	//{{AFX_MSG_MAP(CMyOpenGLView)
-	ON_WM_RBUTTONDOWN()
-	ON_COMMAND(ID_COLLISION_ON, OnCollisionOn)
-	ON_COMMAND(ID_COLLISION_OFF, OnCollisionOff)
-	ON_COMMAND(ID_HOST, OnHost)
-	ON_COMMAND(ID_JOIN, OnJoin)
-	ON_COMMAND(ID_DISCONNECT, OnDisconnect)
-	ON_COMMAND(ID_SINGLE, OnSingle)
-	ON_COMMAND(ID_MULTI, OnMulti)
-	ON_COMMAND(ID_QUIT, OnQuit)
-	//}}AFX_MSG_MAP
-END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // COpenGLView drawing
@@ -420,6 +425,10 @@ void CMyOpenGLView::OnDraw(CDC* pDC)
 		GetParent()->PostMessage(WM_PAINT);
 	}	
 
+/*   if (ElapsedTimeinMSSinceLastRender() >= 100) {
+      updateScene();
+   } // end if
+*/
 	// Limit frame rate to 25 frames per second
 	if ( ElapsedTimeinMSSinceLastRender() >= 35  || (!m_bAnimationRunning) ) {
 
@@ -439,6 +448,10 @@ void CMyOpenGLView::OnDraw(CDC* pDC)
       // Draw the scene objects
       drawScene();
 
+      if (startGame && !gameOver) {
+         PlayMusic(backgroundMusic);
+      } // end if
+
       // Position Light 0
       glLightfv(GL_LIGHT0, GL_POSITION, light0_pos);
 
@@ -450,7 +463,7 @@ void CMyOpenGLView::OnDraw(CDC* pDC)
          
          updateScene();
 
-      }
+      } // end if 
 		   displayFrameRate();
 
 	   // save the elapsed time, this is used with the  next elapsed time to calculate the
@@ -467,37 +480,60 @@ void CMyOpenGLView::setViewPoint()
       GLUquadricObj *sun;
       sun = gluNewQuadric();
 
-	   // Execute Viewing transformations
+/*	   // Execute Viewing transformations
 	   if (viewPointMode == FLY) {
 		   computeFlyView();		
-	   }
+	   }*/
+	  // rotate view for eye positioning via the mouse
       glRotatef( rotationX, 1, 0, 0 );
 	   glRotatef( rotationY, 0, 1, 0 );
       glRotatef(azimuth, 0, 1, 0);
       glPushMatrix();
-         glRotatef(-azimuth, 0, 1, 0);
-         glTranslatef(-1.0f, -4.25f, -1.5f);
-         glRotatef(90.0f, 0, 1, 0);
-         ourTank.draw();
+        glRotatef(-azimuth, 0, 1, 0);
+        // translate the tank away from where the eye position will be,
+        // which is behind the machine gun as a "tank commander"
+        glTranslatef(-1.0f, -4.25f, -1.5f);
+		  // compensation rotation for how model was created
+        glRotatef(90.0f, 0, 1, 0);
+        ourTank.draw();
       glPopMatrix();
 
+      // set up lighting emissitivity property for the sun and for
+      // putting emissitivity back to normal
       GLfloat sun_emissive[3] = {1.0, 1.0, 0.0};
       GLfloat no_emissive[3] = {0.0, 0.0, 0.0};
+      // color of the sun = yellow
       glColor4f(1.0, 1.0, 0.65f, 0.0);
       glPushMatrix();
+         // always place the sun behind the player's right shoulder if
+         // the player is looking straight out in front of the tank
          glTranslatef(120, 120, 120);
+         // make the sun emissive so it looks like it glows
          glMaterialfv(GL_FRONT, GL_EMISSION, sun_emissive);
          gluSphere(sun, 5, 20, 20);
    //      glutSolidSphere(5, 20, 20);
       glPopMatrix();
+      // turn off the emissivity so the rest of the world doesn't glow
       glMaterialfv(GL_FRONT, GL_EMISSION, no_emissive);
+      // translate to the eye position to set the view point
+      // remember, viewPoint{X,Y,Z} are all initialized to zero (0)
+      // and the movement of the tank occurs by adjusting the "viewPoint"
+      // eventhough it is no longer really a viewPoint, just a reference
+      // point for location in the world.  The real "viewPoint" is
+      // one unit to the right, five units up, and one unit back from
+      // this reference point.
       glTranslatef(viewPointX - 1, viewPointY - 5, viewPointZ - 1);
    } else if (!startGame && !gameOver) {
+       // basic view point setup, looking down the -z axis
 	   gluLookAt(0.0, 0.0, 0.0, 
 		          0.0, 0.0, -1.0,
 			       0.0, 1.0, 0.0);
    } else if (startGame && gameOver) {
-      gluLookAt(350.0, 150.0, -400.0, -75.0, 0.0, 100.0, 0.0, 1.0, 0.0);
+      // create a view point looking down on the environment when the game
+      // ends
+      gluLookAt(350.0, 150.0, -400.0, 
+                -75.0, 0.0, 100.0, 
+                0.0, 1.0, 0.0);
    } // end if-else
 } // end SetViewPoint
 
@@ -506,992 +542,667 @@ void CMyOpenGLView::setViewPoint()
 void CMyOpenGLView::drawScene()
 {
    //******** Draw Your Objects Here *********
-if (startGame) {
-   if (multiPlayer) {
-      // do network stuff here
-      Packet *packet = new Packet;
-      packet->packetType = 0;
-      packet->x = viewPointX - 1;
-      packet->y = viewPointY - 5;
-      packet->z = viewPointZ - 1;
-      packet->azimuth = azimuth;
-      packet->rotationX = rotationX;
-      packet->rotationY = rotationY;
-      packet->speed = ourTank.getSpeed();
-//      packet->isDestroyed = ourTank.isDestroyed();
-      packet->mgLatch = mgLatch;
-	   int len = sizeof(*packet);
-      if (server) {
-         if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	      {
-		   CheckError(m_receiveSocket.GetLastError());
-		   m_receiveSocket.Close();
-         multiPlayer = false;
-	      }
+   if (startGame) {
+      if (multiPlayer) {
+         // do network stuff here
+         // NEED TO DECOUPLE NETWORK FUNCTIONALITY
+         // FROM THE DRAWING FUNCTIONALITY
+         Packet *packet = new Packet;
+         packet->packetType = 0;
+         packet->x = viewPointX - 1;
+         packet->y = viewPointY - 5;
+         packet->z = viewPointZ - 1;
+         packet->azimuth = azimuth;
+         packet->rotationX = rotationX;
+         packet->rotationY = rotationY;
+         packet->speed = ourTank.getSpeed();
+   //      packet->isDestroyed = ourTank.isDestroyed();
+         packet->mgLatch = mgLatch;
+	      int len = sizeof(*packet);
+         if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		      CheckError(m_connectSocket.GetLastError());
+            OnDisconnect();
+	      } // end if
          delete packet;
-      } else {
-	      if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	      {
-		   CheckError(m_clientSocket.GetLastError());
-		   m_clientSocket.Close();
-         multiPlayer = false;
-	      }
-         delete packet;
-      } // end if-else
-   } // end if
-   if (multiPlayer) {
-      // Draw opponent
-      glPushMatrix();  
-         glTranslatef(-opponent.getX(), -opponent.getY(), -opponent.getZ());
-         glRotatef(90 - opponent.getAzimuth(), 0, 1, 0);
-         glTranslatef(1.5, -4.25, -1.0);
-         if (!opponent.isDestroyed() || 
-            (opponent.isDestroyed() && opponent.getExplosion()->isGrowing())) {
-            opponent.draw();
-         } // end if
-         if (opponent.isDestroyed()) {
-            opponent.getExplosion()->draw();
-            if (opponent.getExplosion()->isExplosionDone()) {
-               opponent.regen();
+/*         if (server) {
+            if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR)
+	         {
+		      CheckError(m_connectSocket.GetLastError());
+		      m_connectSocket.Close();
+            multiPlayer = false;
+	         }
+            delete packet;
+         } else {
+	         if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR)
+	         {
+		      CheckError(m_connectSocket.GetLastError());
+		      m_connectSocket.Close();
+            multiPlayer = false;
+	         }
+            delete packet;
+         } // end if-else*/
+      } // end if
+
+      // If in a multi-player game, have to draw the opponent and his
+      // machine gun seperately, so it is articulated
+      if (multiPlayer) {
+         // Draw opponent
+         glPushMatrix();  
+            glTranslatef(-opponent.getX(), -opponent.getY(), -opponent.getZ());
+            glRotatef(90 - opponent.getAzimuth(), 0, 1, 0);
+            glTranslatef(1.5, -4.25, -1.0);
+            if (!opponent.isDestroyed() || 
+               (opponent.isDestroyed() && opponent.getExplosion()->isGrowing())) {
+               opponent.draw();
             } // end if
-         } // end if
-	   glPopMatrix();
-      // Draw opponent's machine gun
-      glPushMatrix();
-         glTranslatef(-opponent.getX(), -opponent.getY(), -opponent.getZ());
-         glRotatef(-opponent.getAzimuth(), 0, 1, 0);
-         glTranslatef(0.0f, -0.55f, -1.5f);
-         if (opponent.isMGLatched()) {
-            glRotatef(-opponent.getRotationX(), 1, 0, 0);
-            glRotatef(-opponent.getRotationY(), 0, 1, 0);
-         } // end if
-         if (!opponent.isDestroyed() || 
-            (opponent.isDestroyed() && opponent.getExplosion()->isGrowing())) {
-            oppMG.draw();
-         } // end if
-      glPopMatrix();
-
-      if (ourTank.isRespawning()) {
-         float xDist = abs(spawnSites[spawnSite][0] - ourTank.getX());
-         float zDist = abs(spawnSites[spawnSite][1] - ourTank.getZ());
-         float dist = sqrt(xDist * xDist + zDist * zDist);
-         if (dist > 50) {
-            spawnSiteActive[spawnSite] = false;
-            ourTank.setRespawnFlag(false);
-            Packet *packet = new Packet;
-            packet->packetType = 10;
-            packet->id = spawnSite;
-            packet->spawnSiteActive = false;
-            int len = sizeof(*packet);
-            if (server) {
-               if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	            {
-		         CheckError(m_receiveSocket.GetLastError());
-		         m_receiveSocket.Close();
-               multiPlayer = false;
-	            }
-               delete packet;
-            } else {
-	            if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	            {
-		         CheckError(m_clientSocket.GetLastError());
-		         m_clientSocket.Close();
-               multiPlayer = false;
-	            }
-               delete packet;
-            } // end if-else
-         } // end if
-      } // end if
-   } // end if
-
-   //88888888888888888888888888888888888888888888888888888888
-   char* explode = "explobig.wav";
-
-
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, textNames[3]);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
-
-   // create a quadric for the explosion
-	GLUquadricObj *sobj;
-	sobj = gluNewQuadric();
-	gluQuadricOrientation(sobj, GLU_INSIDE);
-	gluQuadricDrawStyle(sobj, GLU_FILL);
-	gluQuadricNormals(sobj, GLU_SMOOTH);
-   gluQuadricTexture(sobj, GL_TRUE);
-
-		// draw the explosion and delete the quadric object
-//      glPolygonMode(GL_BACK, GL_FILL);
-   glColor3f(0.0, 0.65f, 1.0);
-	gluSphere(sobj, 1100, 100, 100);
-	gluDeleteQuadric(sobj);
-//      glPolygonMode(GL_BACK, GL_LINE);
-
-   // Draw ground
-	glBindTexture(GL_TEXTURE_2D, textNames[2]);
-	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
-   glColor3f(0.0, 0.5, 0.0);
-   for (int x = -1000; x < 1000; x += 100) {
-      for (int z = -1000; z < 1000; z += 100) {
-         glBegin(GL_QUADS);
-            glNormal3f(0.0, 1.0, 0.0);
-            glTexCoord2f(0.0, 0.0);
-            glVertex3f(x, 0.0, z);
-            glTexCoord2f(10.0, 0.0);
-            glVertex3f(x, 0.0, z + 100);
-            glTexCoord2f(10.0, 10.0);
-            glVertex3f(x + 100, 0.0, z + 100);
-            glTexCoord2f(0.0, 10.0);
-            glVertex3f(x + 100, 0.0, z);
-         glEnd();
-      } // end for
-   } // end for
-
-	glDisable(GL_TEXTURE_GEN_S);
-	glDisable(GL_TEXTURE_GEN_T);
-	glDisable(GL_TEXTURE_2D);
-    
-   // Draw machine gun
-   glPushMatrix();
-      glTranslatef(-viewPointX + 1, viewPointY + 5, -viewPointZ + 1);
-      glRotatef(-azimuth, 0, 1, 0);
-      glTranslatef(0, -0.55f, -1.5f);
-      if (mgLatch) {
-         glRotatef(-rotationX, 1, 0, 0);
-         glRotatef(-rotationY, 0, 1, 0);
-      } // end if
-      mg.draw();
-   glPopMatrix();
-
-   // Display tank info on screen
-   char buffer[50];
-   int i;
-   i =  sprintf(buffer, "Speed: ");
-   if (ourTank.getSpeed() < 0.05 && ourTank.getSpeed() > -0.05) {
-      i += sprintf(buffer + i, "0");
-   } else {
-      i += sprintf(buffer + i, "%.0f", ourTank.getSpeed() * 10);
-   } // end if-else
-   if (ourTank.getSpeed() >= -0.05) {
-      glColor3f(0.0, 1.0, 0.0);
-   } else {
-      glColor3f(1.0, 0.0, 0.0);
-   } // end if-else
-   flatFont.screenTextOutput(10, 10, winSizeX, winSizeY, buffer);
-   if (azimuth < 0.5 && azimuth > -0.5) {
-      i =  sprintf(buffer, "000");
-   } else if (azimuth < 10) {
-      i =  sprintf(buffer, "00");
-      i += sprintf(buffer + i, "%.0f", azimuth);
-   } else if (azimuth < 100) {
-      i =  sprintf(buffer, "0");
-      i += sprintf(buffer + i, "%.0f", azimuth);
-   } else {
-      i = sprintf(buffer, "%.0f", azimuth);
-   } // end if-else
-   glColor3f(1.0, 0.0, 0.0);
-   flatFont.screenTextOutput(winSizeX/2.0 - 25, winSizeY - 20, winSizeX, winSizeY, buffer);
-   i =  sprintf(buffer, "Shells: ");
-   i += sprintf(buffer + i, "%i", ourTank.getShells());
-   flatFont.screenTextOutput(winSizeX - 200, 30, winSizeX, winSizeY, buffer);
-   if (ElapsedTimeInMSSinceLastShot() > 250 && ElapsedTimeInMSSinceLastShot() < 10000) {
-      i = sprintf(buffer, " Reloading");
-      flatFont.screenTextOutput(winSizeX - 170, 50, winSizeX, winSizeY, buffer);
-   } // end if
-   i =  sprintf(buffer, ".50 Rounds: ");
-   i += sprintf(buffer + i, "%i", ourTank.getBullets());
-   flatFont.screenTextOutput(winSizeX - 200, 10, winSizeX, winSizeY, buffer);
-   i =  sprintf(buffer, "Score: ");
-   i += sprintf(buffer + i, "%i", score);
-   glColor3f(0.0, 0.0, 1.0);
-   flatFont.screenTextOutput(10, winSizeY - 20, winSizeX, winSizeY, buffer);
-   i =  sprintf(buffer, "Hull: ");
-   i += sprintf(buffer + i, "%.0f", ourTank.getDamageCapacity());
-   if (ourTank.getDamageCapacity() > 20) {
-      glColor3f(0.0, 1.0, 0.0);
-   } else if (ourTank.getDamageCapacity() > 10) {
-      glColor3f(1.0, 1.0, 0.0);
-   } else {
-      glColor3f(1.0, 0.0, 0.0);
-   } // end if-else
-   flatFont.screenTextOutput(winSizeX - 100, winSizeY - 20, winSizeX, winSizeY, buffer);
-   glColor3f(0.0, 0.0, 1.0);
-   i = sprintf(buffer, "Time Remaining");
-   flatFont.screenTextOutput(winSizeX/2.0 - 100, 30, winSizeX, winSizeY, buffer);
-   double elapsedTime = timeGetTime() - gameStartTime;
-   double timeRemainingInSec = (600000 - elapsedTime) / 1000;
-   int timeRemainingMin = (int) (timeRemainingInSec / 60.0);
-   int timeRemainingSec = timeRemainingInSec - timeRemainingMin * 60;
-   if (!gameOver) {
-      i =  sprintf(buffer, "%d:", timeRemainingMin);
-      if (timeRemainingSec < 10) {
-         i += sprintf(buffer + i, "0%d", timeRemainingSec);
-      } else {
-         i += sprintf(buffer + i, "%d", timeRemainingSec);
-      } // end if
-      flatFont.screenTextOutput(winSizeX/2.0 - 35, 10, winSizeX, winSizeY, buffer);
-   } // end if
-   if (multiPlayer && ourTank.getDamageCapacity() <= 0) {
-      i = sprintf(buffer, "You've been fragged!");
-      ourTank.stop();
-      glColor3f(1.0, 0.0, 0.0);
-      flatFont.screenTextOutput(winSizeX/2.0 - 100, winSizeY/2.0, winSizeX, winSizeY, buffer);
-      respawn();
-   } else if (multiPlayer && timeRemainingInSec <= 0) {
-      i = sprintf(buffer, "Game Over");
-      ourTank.stop();
-      glColor3f(1.0, 0.0, 0.0);
-      flatFont.screenTextOutput(winSizeX/2.0 - 50, winSizeY/2.0, winSizeX, winSizeY, buffer);
-      gameOver = true;
-      if (!playedFinalSound) {
-         sndPlaySound("gameover.wav", SND_ASYNC | SND_FILENAME);
-         playedFinalSound = true;
-      } // end if
-   } // end if-else
-   if (!multiPlayer && (ourTank.getDamageCapacity() <= 0 || timeRemainingInSec <= 0 ||
-      (ourTank.getBullets() == 0 && ourTank.getShells() == 0)  ||
-      (enemy.size() == 0))) {
-      i = sprintf(buffer, "Game Over");
-      ourTank.stop();
-      glColor3f(1.0, 0.0, 0.0);
-      flatFont.screenTextOutput(winSizeX/2.0 - 50, winSizeY/2.0, winSizeX, winSizeY, buffer);
-      gameOver = true;
-      if (!playedFinalSound) {
-         sndPlaySound("gameover.wav", SND_ASYNC | SND_FILENAME);
-         playedFinalSound = true;
-      } // end if
-} // end if
-
-
-   for(int p = 0; p < pyramid.size(); p++){
-      glPushMatrix();  
-      glTranslatef(pyramid[p]->getX(), 0.0, pyramid[p]->getZ());
-      pyramid[p]->draw();
-	  glPopMatrix();
-   }
-
-   for(int t = 0; t < friendly.size(); t++){
-      glPushMatrix();  
-      glTranslatef(friendly[t]->getX(), 0.9f, friendly[t]->getZ());
-         if (!friendly[t]->isDestroyed()) {
-            friendly[t]->draw();
-         } else if (friendly[t]->isDestroyed() && friendly[t]->getExplosion()->isGrowing()) {
-            friendly[t]->draw();
-         } // end if-else
-         if (friendly[t]->isDestroyed()) {
-            friendly[t]->getExplosion()->draw();
-            if (friendly[t]->getExplosion()->isExplosionDone()) {
-               delete friendly[t];
-               friendly.erase(&friendly[t]);
+            if (opponent.isDestroyed()) {
+               opponent.getExplosion()->draw();
+               if (opponent.getExplosion()->isExplosionDone()) {
+                  opponent.regen();
+               } // end if
             } // end if
-         } // end if
-	  glPopMatrix();
-   }
-
-   // Draw enemy tanks
-   for (i = 0; i < enemy.size(); i++) {
-      glPushMatrix();
-         glTranslatef(enemy[i]->getX(), 0.5, enemy[i]->getZ());
-         if (!enemy[i]->isDestroyed()) {
-            enemy[i]->draw();
-         } else if (enemy[i]->isDestroyed() && enemy[i]->getExplosion()->isGrowing()) {
-            enemy[i]->draw();
-         } // end if-else
-         if (enemy[i]->isDestroyed()) {
-            enemy[i]->getExplosion()->draw();
-            if (enemy[i]->getExplosion()->isExplosionDone()) {
-               delete enemy[i];
-               enemy.erase(&enemy[i]);
-            } // end if
-         } // end if
-      glPopMatrix();
-   } // end for
-
-   // Draw houses
-   for (i = 0; i < house.size(); i++) {
-      if (!house[i]->isDestroyed()) {
-         house[i]->draw();
-      } else if (house[i]->isDestroyed() && house[i]->getExplosion()->isGrowing()) {
-         house[i]->draw();
-      } // end if-else
-      if (house[i]->isDestroyed()) {
+	      glPopMatrix();
+         // Draw opponent's machine gun
          glPushMatrix();
-            glTranslatef(house[i]->getX(), 0, house[i]->getZ());
-            house[i]->getExplosion()->draw();
+            glTranslatef(-opponent.getX(), -opponent.getY(), -opponent.getZ());
+            glRotatef(-opponent.getAzimuth(), 0, 1, 0);
+            glTranslatef(0.0f, -0.55f, -1.5f);
+            if (opponent.isMGLatched()) {
+               glRotatef(-opponent.getRotationX(), 1, 0, 0);
+               glRotatef(-opponent.getRotationY(), 0, 1, 0);
+            } // end if
+            if (!opponent.isDestroyed() || 
+               (opponent.isDestroyed() && opponent.getExplosion()->isGrowing())) {
+               oppMG.draw();
+            } // end if
          glPopMatrix();
-         if (house[i]->getExplosion()->isExplosionDone()) {
-            delete house[i];
-            house.erase(&house[i]);
-         } // end if
-      } // end if
-   } // end for
 
-   // Draw pine trees
-   for(int a = 0; a < pine.size(); a++){
-      glPushMatrix();  
-         glTranslatef(pine[a]->getX(), 0, pine[a]->getZ());
-         if (!pine[a]->isDestroyed()) {
-            pine[a]->draw();
-         } else if (pine[a]->isDestroyed() && pine[a]->getExplosion()->isGrowing()) {
-            pine[a]->draw();
-         } // end if-else
-         if (pine[a]->isDestroyed()) {
-            pine[a]->getExplosion()->draw();
-            if (pine[a]->getExplosion()->isExplosionDone()) {
-               delete pine[a];
-               pine.erase(&pine[a]);
-            } // end if
-         } // end if
-	   glPopMatrix();
-   } // end for
-
-   // Draw small pine trees   
-   for(int b = 0; b < smallPine.size(); b++){
-      glPushMatrix();  
-         glTranslatef(smallPine[b]->getX(), 0, smallPine[b]->getZ());
-         if (!smallPine[b]->isDestroyed()) {
-            smallPine[b]->draw();
-         } else if (smallPine[b]->isDestroyed() && 
-                    smallPine[b]->getExplosion()->isGrowing()) {
-            smallPine[b]->draw();
-         } // end if-else
-         if (smallPine[b]->isDestroyed()) {
-            smallPine[b]->getExplosion()->draw();
-            if (smallPine[b]->getExplosion()->isExplosionDone()) {
-               delete smallPine[b];
-               smallPine.erase(&smallPine[b]);
-            } // end if
-         } // end if
-      glPopMatrix();
-   } // end for
-
-   // Draw silos
-   for(int sh = 0; sh < silo.size(); sh++){
-      glPushMatrix();  
-         glTranslatef(silo[sh]->getX(), 0, silo[sh]->getZ());
-         if (!silo[sh]->isDestroyed()) {
-            silo[sh]->draw();
-         } else if (silo[sh]->isDestroyed() && silo[sh]->getExplosion()->isGrowing()) {
-            silo[sh]->draw();
-         } // end if-else
-         if (silo[sh]->isDestroyed()) {
-            silo[sh]->getExplosion()->draw();
-            if (silo[sh]->getExplosion()->isExplosionDone()) {
-               delete silo[sh];
-               silo.erase(&silo[sh]);
-            } // end if
-         } // end if
-	   glPopMatrix();
-   } // end for
-
-   // Draw the shells from the main gun
-   for (i = 0; i < shells.size(); i++) {
-      shellCollision = false;
-      glPushMatrix();
-         glTranslatef(shells[i]->getX(), shells[i]->getY(), shells[i]->getZ());
-         glRotatef(-(shells[i]->getAzimuth()), 0, 1, 0);
-         glTranslatef(-1, -1.75, -7.5 - shells[i]->getRange());
-         shells[i]->draw();
-      glPopMatrix();
-      // Check for shell collisions with the opponent
-      if (multiPlayer && !shellCollision) {
-         xDist = abs(shells[i]->getRealX() + opponent.getX());
-         zDist = abs(shells[i]->getRealZ() + opponent.getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         if (dist < opponent.getRadius()) {
-            shellCollision = true;
-            if (opponent.getDamageCapacity() > 0) {
-               opponent.takeDamage(shells[i]->getDamage());
-            } // end if
-            if (multiPlayer && opponent.getDamageCapacity() > 0) {
+         if (ourTank.isRespawning()) {
+            float xDist = fabsf(spawnSites[spawnSite][0] - ourTank.getX());
+            float zDist = fabsf(spawnSites[spawnSite][1] - ourTank.getZ());
+            float dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            if (dist > 50) {
+               spawnSiteActive[spawnSite] = false;
+               ourTank.setRespawnFlag(false);
                Packet *packet = new Packet;
-               packet->packetType = 3;
-               packet->damage = shells[i]->getDamage();
+               packet->packetType = 10;
+               packet->id = spawnSite;
+               packet->spawnSiteActive = false;
                int len = sizeof(*packet);
-               if (server) {
-                  if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_receiveSocket.GetLastError());
-		            m_receiveSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } else {
-	               if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_clientSocket.GetLastError());
-		            m_clientSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } // end if-else
+               if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		            CheckError(m_connectSocket.GetLastError());
+                  OnDisconnect();
+	            } // end if
+               delete packet;
             } // end if
-            if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
-               score += opponent.getPointValue();
-               opponent.startExplosion();
-               sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-            } // end if
-            delete shells[i];
-            shells.erase(&shells[i]);
          } // end if
       } // end if
 
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - enemy[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - enemy[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < enemy[j]->getRadius()) {
-               shellCollision = true;
-               enemy[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 5;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
-                  score += enemy[j]->getPointValue();
-                  enemy[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < enemy.size());
-      } // end if
-      // Check for shell collisions with houses
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - house[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - house[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < house[j]->getRadius()) {
-               shellCollision = true;
-               house[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 6;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (house[j]->isDestroyed() && house[j]->getExplosion() == 0) {
-                     score += house[j]->getPointValue();
-                     house[j]->startExplosion();
-                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < house.size());
-      } // end if
-      // Check for shell collisions with pine trees
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - pine[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - pine[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < pine[j]->getRadius()) {
-               shellCollision = true;
-               pine[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 7;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (pine[j]->isDestroyed() && pine[j]->getExplosion() == 0) {
-                  score += pine[j]->getPointValue();
-                  pine[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < pine.size());
-      } // end if
-      // Check for shell collisions with small pine trees
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - smallPine[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - smallPine[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < smallPine[j]->getRadius()) {
-               shellCollision = true;
-               smallPine[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 8;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (smallPine[j]->isDestroyed() && smallPine[j]->getExplosion() == 0) {
-                  score += smallPine[j]->getPointValue();
-                  smallPine[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < smallPine.size());
-      } // end if
-      // Check for shell collisions with silos
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - silo[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - silo[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < silo[j]->getRadius()) {
-               shellCollision = true;
-               silo[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 9;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (silo[j]->isDestroyed() && silo[j]->getExplosion() == 0) {
-                  score += silo[j]->getPointValue();
-                  silo[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < silo.size());
-      } // end if
-      // Check for shell collisions with friendly tanks
-      if (!shellCollision) {
-         int j = 0;
-         do {
-            xDist = abs(shells[i]->getRealX() - friendly[j]->getX());
-            zDist = abs(shells[i]->getRealZ() - friendly[j]->getZ());
-            dist = sqrt(xDist * xDist + zDist * zDist);
-            if (dist < friendly[j]->getRadius()) {
-               shellCollision = true;
-               friendly[j]->takeDamage(shells[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 4;
-                  packet->id = j;
-                  packet->damage = shells[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete shells[i];
-               shells.erase(&shells[i]);
-               if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
-                  score += friendly[j]->getPointValue();
-                  friendly[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-         } while (!shellCollision && j < friendly.size());
-      } // end if 
-   } // end for
+      //88888888888888888888888888888888888888888888888888888888
+      // NOTE: CHECK TO MOVE THIS TO INIT METHOD
+      char* explode = "explobig.wav";
 
-   if (multiPlayer) {
-      // Draw the shells from the opponent's main gun
-      for (i = 0; i < oppShells.size(); i++) {
+       // Draw the sky, which is a texture plastered on a sphere
+       glEnable(GL_TEXTURE_2D);
+	   glBindTexture(GL_TEXTURE_2D, textNames[3]);
+	   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL);
+
+      // create a quadric for the sky
+	   GLUquadricObj *sobj;
+	   sobj = gluNewQuadric();
+	   gluQuadricOrientation(sobj, GLU_INSIDE);
+	   gluQuadricDrawStyle(sobj, GLU_FILL);
+	   gluQuadricNormals(sobj, GLU_SMOOTH);
+       gluQuadricTexture(sobj, GL_TRUE);
+
+	   // draw the sky and delete the quadric object
+       glColor3f(0.0, 0.65f, 1.0);
+	   gluSphere(sobj, 1100, 100, 100);
+	   gluDeleteQuadric(sobj);
+
+      // Draw ground
+       // Use a marble texture to make the ground look like grass
+       // Hey, it works...
+       glBindTexture(GL_TEXTURE_2D, textNames[2]);
+	   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
+       glColor3f(0.0, 0.5, 0.0);
+       for (int x = -1000; x < 1000; x += 100) {
+          for (int z = -1000; z < 1000; z += 100) {
+             glBegin(GL_QUADS);
+                glNormal3f(0.0, 1.0, 0.0);
+                glTexCoord2f(0.0, 0.0);
+                glVertex3f((GLfloat)x, 0.0, (GLfloat)z);
+                glTexCoord2f(10.0, 0.0);
+                glVertex3f((GLfloat)x, 0.0, (GLfloat)z + 100.0f);
+                glTexCoord2f(10.0, 10.0);
+                glVertex3f((GLfloat)x + 100.0f, 0.0, (GLfloat)z + 100.0f);
+                glTexCoord2f(0.0, 10.0);
+                glVertex3f((GLfloat)x + 100.0f, 0.0, (GLfloat)z);
+             glEnd();
+          } // end for
+       } // end for
+
+       // Turn off texturing
+	   glDisable(GL_TEXTURE_GEN_S);
+	   glDisable(GL_TEXTURE_GEN_T);
+	   glDisable(GL_TEXTURE_2D);
+    
+       // Draw our machine gun
+       glPushMatrix();
+         // first, to create a rotation without a moment arm
+         // translate back to the reference point for the tank,
+         // which is defined by the "viewPoints"
+         glTranslatef(-viewPointX + 1, viewPointY + 5, -viewPointZ + 1);
+         // rotate about the azimuth
+         glRotatef(-azimuth, 0, 1, 0);
+         // translate back to where the gun should be
+         glTranslatef(0, -0.55f, -1.5f);
+         // if the tank commander is steering the machine gun,
+         // then rotate it to match the view points rotations done
+         // with the mouse
+         if (mgLatch) {
+            glRotatef(-rotationX, 1, 0, 0);
+            glRotatef(-rotationY, 0, 1, 0);
+         } // end if
+         // draw the machine gun
+         mg.draw();
+      glPopMatrix();
+
+      // Display tank info on screen
+      // This info is the HUD for the tank and the game.
+      // ** Would like to be able to create this with a translucent look
+      // to it. **
+      char buffer[50];
+      int i;
+      i =  sprintf(buffer, "Speed: ");
+      if (ourTank.getSpeed() < 0.05 && ourTank.getSpeed() > -0.05) {
+         i += sprintf(buffer + i, "0");
+      } else {
+         i += sprintf(buffer + i, "%.0f", ourTank.getSpeed() * 10);
+      } // end if-else
+      if (ourTank.getSpeed() >= -0.05) {
+         // Color for speed when going forward is green
+         glColor3f(0.0, 1.0, 0.0);
+      } else {
+         // Color for speed when going back is red
+         glColor3f(1.0, 0.0, 0.0);
+      } // end if-else
+      // draw speed in the lower left corner of the screen
+      flatFont.screenTextOutput(10, 10, winSizeX, winSizeY, buffer);
+      // for the azimuth, buffer enough leading zeros so it always
+      // displays three digits
+      if (azimuth < 0.5 && azimuth > -0.5) {
+         i =  sprintf(buffer, "000");
+      } else if (azimuth < 10) {
+         i =  sprintf(buffer, "00");
+         i += sprintf(buffer + i, "%.0f", azimuth);
+      } else if (azimuth < 100) {
+         i =  sprintf(buffer, "0");
+         i += sprintf(buffer + i, "%.0f", azimuth);
+      } else {
+         i = sprintf(buffer, "%.0f", azimuth);
+      } // end if-else
+      // Azimuth is drawn in red
+      glColor3f(1.0, 0.0, 0.0);
+      // Draw azimuth in the top center of the screen
+      flatFont.screenTextOutput(winSizeX/2 - 25, winSizeY - 20, winSizeX, winSizeY, buffer);
+      i =  sprintf(buffer, "Shells: ");
+      i += sprintf(buffer + i, "%i", ourTank.getShells());
+      // Display the number of shells using red in the lower right corner of the screen
+      flatFont.screenTextOutput(winSizeX - 200, 30, winSizeX, winSizeY, buffer);
+      // If 10 seconds have not passed since the last main gun shot, display "Reloading"
+      // right above the shell count
+      if (ElapsedTimeInMSSinceLastShot() > 250 && ElapsedTimeInMSSinceLastShot() < 10000) {
+         i = sprintf(buffer, " Reloading");
+         flatFont.screenTextOutput(winSizeX - 170, 50, winSizeX, winSizeY, buffer);
+      } // end if
+      i =  sprintf(buffer, ".50 Rounds: ");
+      i += sprintf(buffer + i, "%i", ourTank.getBullets());
+      // Display the number of machine gun bullets using red in the bottom right corner
+      // of the screen, below the number of main gun shells
+      flatFont.screenTextOutput(winSizeX - 200, 10, winSizeX, winSizeY, buffer);
+      i =  sprintf(buffer, "Score: ");
+      i += sprintf(buffer + i, "%i", score);
+      // The score is drawn in blue
+      glColor3f(0.0, 0.0, 1.0);
+      // Display the score in the upper left corner of the screen
+      flatFont.screenTextOutput(10, winSizeY - 20, winSizeX, winSizeY, buffer);
+      i =  sprintf(buffer, "Hull: ");
+      i += sprintf(buffer + i, "%.0f", ourTank.getDamageCapacity());
+      if (ourTank.getDamageCapacity() > 20) {
+         // If damage capacity if above 2/3, the color it green
+         glColor3f(0.0, 1.0, 0.0);
+      } else if (ourTank.getDamageCapacity() > 10) {
+         // Damage capacity between 1/3 and 2/3 is yellow
+         glColor3f(1.0, 1.0, 0.0);
+      } else {
+         // Damage capacity below 1/3 is red
+         glColor3f(1.0, 0.0, 0.0);
+      } // end if-else
+      // Draw damage capacity in the upper right corner of the screen
+      flatFont.screenTextOutput(winSizeX - 100, winSizeY - 20, winSizeX, winSizeY, buffer);
+      // Color for time is blue
+      glColor3f(0.0, 0.0, 1.0);
+      i = sprintf(buffer, "Time Remaining");
+      // Draw time remaining in the bottom center of the screen
+      flatFont.screenTextOutput(winSizeX/2 - 100, 30, winSizeX, winSizeY, buffer);
+      double elapsedTime = timeGetTime() - gameStartTime;
+      double timeRemainingInSec = (600000 - elapsedTime) / 1000;
+      int timeRemainingMin = (int) (timeRemainingInSec / 60.0);
+      int timeRemainingSec = (int) (timeRemainingInSec - timeRemainingMin * 60);
+      // As long as the game is not over, draw the time
+      if (!gameOver) {
+         i =  sprintf(buffer, "%d:", timeRemainingMin);
+         if (timeRemainingSec < 10) {
+            i += sprintf(buffer + i, "0%d", timeRemainingSec);
+         } else {
+            i += sprintf(buffer + i, "%d", timeRemainingSec);
+         } // end if
+         flatFont.screenTextOutput(winSizeX/2 - 35, 10, winSizeX, winSizeY, buffer);
+      } // end if
+      // When you get killed in a multi-player game, display a message in the center of
+      // the screen
+      if (multiPlayer && ourTank.getDamageCapacity() <= 0) {
+         i = sprintf(buffer, "You've been fragged!");
+         ourTank.stop();
+         glColor3f(1.0, 0.0, 0.0);
+         flatFont.screenTextOutput(winSizeX/2 - 100, winSizeY/2, winSizeX, winSizeY, buffer);
+         respawn();
+      // For multi-player, game ends when the time runs out
+      // When the game is over, display "Game Over" in the center of the screen
+      } else if (multiPlayer && timeRemainingInSec <= 0) {
+         i = sprintf(buffer, "Game Over");
+         ourTank.stop();
+         glColor3f(1.0, 0.0, 0.0);
+         flatFont.screenTextOutput(winSizeX/2 - 50, winSizeY/2, winSizeX, winSizeY, buffer);
+         gameOver = true;
+         // Play "Game over man..." clip from Aliens at the end of the game
+         if (!playedFinalSound) {
+            mciSendCommand(wDeviceID, MCI_STOP, 0, NULL);
+            mciSendCommand(wDeviceID, MCI_CLOSE, 0, NULL);
+            sndPlaySound("gameover.wav", SND_ASYNC | SND_FILENAME);
+            playedFinalSound = true;
+         } // end if
+      } // end if-else
+      // For single player, the game ends when the player runs out of both bullets and
+      // shells, or time, or the tank is destroyed
+      if (!multiPlayer && (ourTank.getDamageCapacity() <= 0 || timeRemainingInSec <= 0 ||
+         (ourTank.getBullets() == 0 && ourTank.getShells() == 0)  ||
+         (enemy.size() == 0))) {
+         i = sprintf(buffer, "Game Over");
+         ourTank.stop();
+         glColor3f(1.0, 0.0, 0.0);
+         flatFont.screenTextOutput(winSizeX/2 - 50, winSizeY/2, winSizeX, winSizeY, buffer);
+         gameOver = true;
+         // Play "Game over man..." clip from Aliens at the end of the game
+         if (!playedFinalSound) {
+           mciSendCommand(wDeviceID, MCI_STOP, 0, NULL);
+           mciSendCommand(wDeviceID, MCI_CLOSE, 0, NULL);
+           sndPlaySound("gameover.wav", SND_ASYNC | SND_FILENAME);
+            playedFinalSound = true;
+         } // end if
+   } // end if
+
+      // Draw the "mountains" using tetrahedrons from MV4202 labs
+      for(int p = 0; p < (int) pyramid.size(); p++){
+         glPushMatrix();  
+            glTranslatef(pyramid[p]->getX(), 0.0, pyramid[p]->getZ());
+            pyramid[p]->draw();
+	      glPopMatrix();
+      } // end for
+
+      // Draw the "friendly" tanks that look like ours
+      for(int t = 0; t < (int) friendly.size(); t++){
+         glPushMatrix();  
+         glTranslatef(friendly[t]->getX(), 0.9f, friendly[t]->getZ());
+            if (!friendly[t]->isDestroyed()) {
+               friendly[t]->draw();
+            } else if (friendly[t]->isDestroyed() && friendly[t]->getExplosion()->isGrowing()) {
+               friendly[t]->draw();
+            } // end if-else
+            if (friendly[t]->isDestroyed()) {
+               friendly[t]->getExplosion()->draw();
+               if (friendly[t]->getExplosion()->isExplosionDone()) {
+                  delete friendly[t];
+                  friendly.erase(&friendly[t]);
+               } // end if
+            } // end if
+	     glPopMatrix();
+      } // end for
+
+      // Draw enemy tanks
+      for (i = 0; i < (int) enemy.size(); i++) {
+         glPushMatrix();
+            glTranslatef(enemy[i]->getX(), 0.5, enemy[i]->getZ());
+            if (!enemy[i]->isDestroyed()) {
+               enemy[i]->draw();
+            } else if (enemy[i]->isDestroyed() && enemy[i]->getExplosion()->isGrowing()) {
+               enemy[i]->draw();
+            } // end if-else
+            if (enemy[i]->isDestroyed()) {
+               enemy[i]->getExplosion()->draw();
+               if (enemy[i]->getExplosion()->isExplosionDone()) {
+                  delete enemy[i];
+                  enemy.erase(&enemy[i]);
+               } // end if
+            } // end if
+         glPopMatrix();
+      } // end for
+
+      // Draw houses
+      for (i = 0; i < (int) house.size(); i++) {
+         if (!house[i]->isDestroyed()) {
+            house[i]->draw();
+         } else if (house[i]->isDestroyed() && house[i]->getExplosion()->isGrowing()) {
+            house[i]->draw();
+         } // end if-else
+         if (house[i]->isDestroyed()) {
+            glPushMatrix();
+               glTranslatef(house[i]->getX(), 0, house[i]->getZ());
+               house[i]->getExplosion()->draw();
+            glPopMatrix();
+            if (house[i]->getExplosion()->isExplosionDone()) {
+               delete house[i];
+               house.erase(&house[i]);
+            } // end if
+         } // end if
+      } // end for
+
+      // Draw pine trees
+      for(int a = 0; a < (int) pine.size(); a++){
+         glPushMatrix();  
+            glTranslatef(pine[a]->getX(), 0, pine[a]->getZ());
+            if (!pine[a]->isDestroyed()) {
+               pine[a]->draw();
+            } else if (pine[a]->isDestroyed() && pine[a]->getExplosion()->isGrowing()) {
+               pine[a]->draw();
+            } // end if-else
+            if (pine[a]->isDestroyed()) {
+               pine[a]->getExplosion()->draw();
+               if (pine[a]->getExplosion()->isExplosionDone()) {
+                  delete pine[a];
+                  pine.erase(&pine[a]);
+               } // end if
+            } // end if
+	      glPopMatrix();
+      } // end for
+
+      // Draw small pine trees   
+      for(int b = 0; b < (int) smallPine.size(); b++){
+         glPushMatrix();  
+            glTranslatef(smallPine[b]->getX(), 0, smallPine[b]->getZ());
+            if (!smallPine[b]->isDestroyed()) {
+               smallPine[b]->draw();
+            } else if (smallPine[b]->isDestroyed() && 
+                       smallPine[b]->getExplosion()->isGrowing()) {
+               smallPine[b]->draw();
+            } // end if-else
+            if (smallPine[b]->isDestroyed()) {
+               smallPine[b]->getExplosion()->draw();
+               if (smallPine[b]->getExplosion()->isExplosionDone()) {
+                  delete smallPine[b];
+                  smallPine.erase(&smallPine[b]);
+               } // end if
+            } // end if
+         glPopMatrix();
+      } // end for
+
+      // Draw silos
+      for(int sh = 0; sh < (int) silo.size(); sh++){
+         glPushMatrix();  
+            glTranslatef(silo[sh]->getX(), 0, silo[sh]->getZ());
+            if (!silo[sh]->isDestroyed()) {
+               silo[sh]->draw();
+            } else if (silo[sh]->isDestroyed() && silo[sh]->getExplosion()->isGrowing()) {
+               silo[sh]->draw();
+            } // end if-else
+            if (silo[sh]->isDestroyed()) {
+               silo[sh]->getExplosion()->draw();
+               if (silo[sh]->getExplosion()->isExplosionDone()) {
+                  delete silo[sh];
+                  silo.erase(&silo[sh]);
+               } // end if
+            } // end if
+	      glPopMatrix();
+      } // end for
+
+      // Draw the shells from the main gun
+      for (i = 0; i < (int) shells.size(); i++) {
          shellCollision = false;
          glPushMatrix();
-            glTranslatef(oppShells[i]->getX(), oppShells[i]->getY(), oppShells[i]->getZ());
-            glRotatef(-oppShells[i]->getAzimuth(), 0, 1, 0);
-            glTranslatef(-1.0f, -1.75f, -7.5f - oppShells[i]->getRange());
-            oppShells[i]->draw();
+            glTranslatef(shells[i]->getX(), shells[i]->getY(), shells[i]->getZ());
+            glRotatef(-(shells[i]->getAzimuth()), 0, 1, 0);
+            glTranslatef(-1.0f, -1.75f, -7.5f - shells[i]->getRange());
+            shells[i]->draw();
          glPopMatrix();
-      // Check for shell collisions with us
-/*      if (!shellCollision) {
-         xDist = abs(-oppShells[i]->getRealX() - ourTank.getX());
-         zDist = abs(-oppShells[i]->getRealZ() - ourTank.getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         if (dist < ourTank.getRadius()) {
-            shellCollision = true;
-            ourTank.takeDamage(oppShells[i]->getDamage());
-            delete oppShells[i];
-            oppShells.erase(&oppShells[i]);
-            if (ourTank.isDestroyed() && ourTank.getExplosion() == 0) {
-               ourTank.startExplosion();
-               sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+         // Check for shell collisions with the opponent
+         // NOTE: PROBABLY NEED TO CHANGE THIS FOR MULTI-PLAYER SO
+         // THAT THE OPPONENT IS CHECKING FOR COLLISION WITH OUR
+         // SHELLS
+         if (multiPlayer && !shellCollision) {
+            xDist = fabsf(shells[i]->getRealX() + opponent.getX());
+            zDist = fabsf(shells[i]->getRealZ() + opponent.getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            if (dist < opponent.getRadius()) {
+               shellCollision = true;
+               if (opponent.getDamageCapacity() > 0) {
+                  opponent.takeDamage(shells[i]->getDamage());
+               } // end if
+               if (multiPlayer && opponent.getDamageCapacity() > 0) {
+                  Packet *packet = new Packet;
+                  packet->packetType = 3;
+                  packet->damage = shells[i]->getDamage();
+                  int len = sizeof(*packet);
+                  if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		               CheckError(m_connectSocket.GetLastError());
+                     OnDisconnect();
+	               } // end if
+                  delete packet;
+               } // end if
+               if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
+                  score += opponent.getPointValue();
+                  opponent.startExplosion();
+                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               } // end if
+               delete shells[i];
+               shells.erase(&shells[i]);
             } // end if
          } // end if
-      } // end if
-         // Check for shell collisions with enemy tanks
-   /*      if (!shellCollision) {
+
+         // NOTE: WOULD SIMPLIFY CODE IF EVERY OBJECT THAT CAN BE
+         // DESTROYED WAS DERIVED FROM A BASE CLASS FOR EASIER ITERATION
+         // ALSO NEED TO CONSIDER AOIM APPROACH
+         // Shell collision with enemy tanks
+         if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - enemy[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - enemy[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - enemy[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - enemy[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < enemy[j]->getRadius()) {
                   shellCollision = true;
-                  enemy[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&oppShells[i]);
+                  enemy[j]->takeDamage(shells[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 5;
+                     packet->id = j;
+                     packet->damage = shells[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
+                     score += enemy[j]->getPointValue();
                      enemy[j]->startExplosion();
                      sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                   } // end if
                } // end if
                j++;
-            } while (!shellCollision && j < enemy.size());
+            } while (!shellCollision && j < (int) enemy.size());
          } // end if
+
          // Check for shell collisions with houses
          if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - house[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - house[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - house[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - house[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < house[j]->getRadius()) {
                   shellCollision = true;
-                  house[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&oppShells[i]);
+                  house[j]->takeDamage(shells[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 6;
+                     packet->id = j;
+                     packet->damage = shells[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (house[j]->isDestroyed() && house[j]->getExplosion() == 0) {
+                        score += house[j]->getPointValue();
                         house[j]->startExplosion();
                         sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                   } // end if
                } // end if
                j++;
-            } while (!shellCollision && j < house.size());
+            } while (!shellCollision && j < (int) house.size());
          } // end if
+
          // Check for shell collisions with pine trees
          if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - pine[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - pine[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - pine[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - pine[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < pine[j]->getRadius()) {
                   shellCollision = true;
-                  pine[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&oppShells[i]);
+                  pine[j]->takeDamage(shells[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 7;
+                     packet->id = j;
+                     packet->damage = shells[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (pine[j]->isDestroyed() && pine[j]->getExplosion() == 0) {
+                     score += pine[j]->getPointValue();
                      pine[j]->startExplosion();
                      sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                   } // end if
                } // end if
                j++;
-            } while (!shellCollision && j < pine.size());
+            } while (!shellCollision && j < (int) pine.size());
          } // end if
          // Check for shell collisions with small pine trees
          if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - smallPine[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - smallPine[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - smallPine[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - smallPine[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < smallPine[j]->getRadius()) {
                   shellCollision = true;
-                  smallPine[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&oppShells[i]);
+                  smallPine[j]->takeDamage(shells[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 8;
+                     packet->id = j;
+                     packet->damage = shells[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (smallPine[j]->isDestroyed() && smallPine[j]->getExplosion() == 0) {
+                     score += smallPine[j]->getPointValue();
                      smallPine[j]->startExplosion();
                      sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                   } // end if
                } // end if
                j++;
-            } while (!shellCollision && j < smallPine.size());
+            } while (!shellCollision && j < (int) smallPine.size());
          } // end if
          // Check for shell collisions with silos
          if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - silo[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - silo[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - silo[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - silo[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < silo[j]->getRadius()) {
                   shellCollision = true;
-                  silo[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&shells[i]);
+                  silo[j]->takeDamage(shells[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 9;
+                     packet->id = j;
+                     packet->damage = shells[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (silo[j]->isDestroyed() && silo[j]->getExplosion() == 0) {
+                     score += silo[j]->getPointValue();
                      silo[j]->startExplosion();
                      sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                   } // end if
                } // end if
                j++;
-            } while (!shellCollision && j < silo.size());
+            } while (!shellCollision && j < (int) silo.size());
          } // end if
          // Check for shell collisions with friendly tanks
          if (!shellCollision) {
             int j = 0;
             do {
-               xDist = abs(oppShells[i]->getRealX() - friendly[j]->getX());
-               zDist = abs(oppShells[i]->getRealZ() - friendly[j]->getZ());
-               dist = sqrt(xDist * xDist + zDist * zDist);
+               xDist = fabsf(shells[i]->getRealX() - friendly[j]->getX());
+               zDist = fabsf(shells[i]->getRealZ() - friendly[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
                if (dist < friendly[j]->getRadius()) {
                   shellCollision = true;
-                  friendly[j]->takeDamage(oppShells[i]->getDamage());
-                  delete oppShells[i];
-                  oppShells.erase(&oppShells[i]);
-                  if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
-                     friendly[j]->startExplosion();
-                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-                  } // end if
-               } // end if
-               j++;
-            } while (!shellCollision && j < friendly.size());
-         } // end if */
-      } // end for
-   } // end if
-
-   // Draw the bullets from the .50 machine gun
-   for (i = 0; i < bullets.size(); i++) {
-      bulletCollision = false;
-      glPushMatrix();
-         glTranslatef(bullets[i]->getX(), bullets[i]->getY(), bullets[i]->getZ());
-         glRotatef(-(bullets[i]->getAzimuth()), 0, 1, 0);
-         glTranslatef(0, -0.55f, -1.5f);
-         glRotatef(bullets[i]->getElevation(), 1, 0, 0);
-         glRotatef(-bullets[i]->getRotation(), 0, 1, 0);
-         glTranslatef(0, 0, -2 - bullets[i]->getRange());
-         bullets[i]->draw();
-      glPopMatrix();
-      // Check for bullet collisions with the opponent
-      if (multiPlayer && !bulletCollision) {
-         xDist = abs(bullets[i]->getRealX() + opponent.getX());
-         yDist = abs(bullets[i]->getRealY() - 0.75f);
-         zDist = abs(bullets[i]->getRealZ() + opponent.getZ());
-         dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-         if (dist < opponent.getRadius()) {
-            bulletCollision = true;
-            if (opponent.getDamageCapacity() > 0) {
-               opponent.takeDamage(bullets[i]->getDamage());
-            } // end if
-            if (multiPlayer && opponent.getDamageCapacity() > 0) {
-               Packet *packet = new Packet;
-               packet->packetType = 3;
-               packet->damage = bullets[i]->getDamage();
-               int len = sizeof(*packet);
-               if (server) {
-                  if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_receiveSocket.GetLastError());
-		            m_receiveSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } else {
-	               if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_clientSocket.GetLastError());
-		            m_clientSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } // end if-else
-            } // end if
-            delete bullets[i];
-            bullets.erase(&bullets[i]);
-            if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
-               score += opponent.getPointValue();
-               opponent.startExplosion();
-               sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-            } // end if
-         } // end if
-      } // end if
-      // Check for bullet collisions with enemy tanks
-      int j = 0;
-      do {
-            xDist = abs(bullets[i]->getRealX() - enemy[j]->getX());
-            yDist = abs(bullets[i]->getRealY() - enemy[j]->getY());
-            zDist = abs(bullets[i]->getRealZ() - enemy[j]->getZ());
-            dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-            if (dist < enemy[j]->getRadius()) {
-               bulletCollision = true;
-               enemy[j]->takeDamage(bullets[i]->getDamage());
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 4;
-                  packet->id = j;
-                  packet->damage = bullets[i]->getDamage();
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               delete bullets[i];
-               bullets.erase(&bullets[i]);
-               if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
-                  score += enemy[j]->getPointValue();
-                  enemy[j]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-            } // end if
-            j++;
-      } while (!bulletCollision && j < enemy.size());
-      // Check for bullet collisions with friendly tanks
-      if (!bulletCollision) {
-         int j = 0;
-         do {
-               xDist = abs(bullets[i]->getRealX() - friendly[j]->getX());
-               yDist = abs(bullets[i]->getRealY() - friendly[j]->getY());
-               zDist = abs(bullets[i]->getRealZ() - friendly[j]->getZ());
-               dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-               if (dist < friendly[j]->getRadius()) {
-                  bulletCollision = true;
-                  friendly[j]->takeDamage(bullets[i]->getDamage());
+                  friendly[j]->takeDamage(shells[i]->getDamage());
                   if (multiPlayer) {
                      Packet *packet = new Packet;
-                     packet->packetType = 5;
+                     packet->packetType = 4;
                      packet->id = j;
-                     packet->damage = bullets[i]->getDamage();
+                     packet->damage = shells[i]->getDamage();
                      int len = sizeof(*packet);
-                     if (server) {
-                        if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_receiveSocket.GetLastError());
-		                  m_receiveSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } else {
-	                     if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_clientSocket.GetLastError());
-		                  m_clientSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } // end if-else
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
                   } // end if
-                  delete bullets[i];
-                  bullets.erase(&bullets[i]);
+                  delete shells[i];
+                  shells.erase(&shells[i]);
                   if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
                      score += friendly[j]->getPointValue();
                      friendly[j]->startExplosion();
@@ -1499,1053 +1210,1038 @@ if (startGame) {
                   } // end if
                } // end if
                j++;
-         } while (!bulletCollision && j < friendly.size());
-      } // end if 
-   } // end for
+            } while (!shellCollision && j < (int) friendly.size());
+         } // end if 
+      } // end for
 
-   // Draw the bullets from the opponent's .50 machine gun
-   if (multiPlayer) {
-      for (i = 0; i < oppBullets.size(); i++) {
-         bulletCollision = false;
-         glPushMatrix();
-            glTranslatef(oppBullets[i]->getX(), oppBullets[i]->getY(), oppBullets[i]->getZ());
-            glRotatef(-(oppBullets[i]->getAzimuth()), 0, 1, 0);
-            glTranslatef(0, -0.55f, -1.5f);
-            glRotatef(oppBullets[i]->getElevation(), 1, 0, 0);
-            glRotatef(-oppBullets[i]->getRotation(), 0, 1, 0);
-            glTranslatef(0, 0, -2 - oppBullets[i]->getRange());
-            oppBullets[i]->draw();
-         glPopMatrix();
-      // Check for bullet collisions with us
-/*      if (!bulletCollision) {
-         xDist = abs(oppBullets[i]->getRealX() - ourTank.getX());
-         yDist = abs(oppBullets[i]->getRealY() - 0.75f);
-         zDist = abs(-oppBullets[i]->getRealZ() + ourTank.getZ());
-         dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-         i = sprintf(buffer, "xDist: %.1f\tyDist: %.1f\tzDist: %.1f\r\n", xDist, yDist, zDist);
-         console::output(buffer);
-         if (dist < ourTank.getRadius()) {
-            bulletCollision = true;
-            ourTank.takeDamage(oppBullets[i]->getDamage());
-            delete oppBullets[i];
-            oppBullets.erase(&oppBullets[i]);
-            if (ourTank.isDestroyed() && ourTank.getExplosion() == 0) {
-               ourTank.startExplosion();
-               sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+      if (multiPlayer) {
+         // Draw the shells from the opponent's main gun
+         for (i = 0; i < (int) oppShells.size(); i++) {
+            shellCollision = false;
+            glPushMatrix();
+               glTranslatef(oppShells[i]->getX(), oppShells[i]->getY(), oppShells[i]->getZ());
+               glRotatef(-oppShells[i]->getAzimuth(), 0, 1, 0);
+               glTranslatef(-1.0f, -1.75f, -7.5f - oppShells[i]->getRange());
+               oppShells[i]->draw();
+            glPopMatrix();
+         // Check for shell collisions with us
+            // NOTE: MIGHT NEED TO REINVOKE THIS CODE FOR PROPER
+            // MULTI-PLAYER PLAY
+   /*      if (!shellCollision) {
+            xDist = abs(-oppShells[i]->getRealX() - ourTank.getX());
+            zDist = abs(-oppShells[i]->getRealZ() - ourTank.getZ());
+            dist = sqrt(xDist * xDist + zDist * zDist);
+            if (dist < ourTank.getRadius()) {
+               shellCollision = true;
+               ourTank.takeDamage(oppShells[i]->getDamage());
+               delete oppShells[i];
+               oppShells.erase(&oppShells[i]);
+               if (ourTank.isDestroyed() && ourTank.getExplosion() == 0) {
+                  ourTank.startExplosion();
+                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               } // end if
             } // end if
          } // end if
-      } // end if
-         // Check for bullet collisions with enemy tanks
-   /*      int j = 0;
-         do {
-               xDist = abs(oppBullets[i]->getRealX() - enemy[j]->getX());
-               yDist = abs(oppBullets[i]->getRealY() - enemy[j]->getY());
-               zDist = abs(oppBullets[i]->getRealZ() - enemy[j]->getZ());
-               dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
-               if (dist < enemy[j]->getRadius()) {
-                  bulletCollision = true;
-                  enemy[j]->takeDamage(oppBullets[i]->getDamage());
-                  delete oppBullets[i];
-                  oppBullets.erase(&oppBullets[i]);
-                  if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
-                     enemy[j]->startExplosion();
-                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+            // Check for shell collisions with enemy tanks
+      /*      if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - enemy[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - enemy[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
+                  if (dist < enemy[j]->getRadius()) {
+                     shellCollision = true;
+                     enemy[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&oppShells[i]);
+                     if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
+                        enemy[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
                   } // end if
-               } // end if
-               j++;
-         } while (!bulletCollision && j < enemy.size());
-         // Check for bullet collisions with friendly tanks
-         if (!bulletCollision) {
-            int j = 0;
-            do {
-                  xDist = abs(oppBullets[i]->getRealX() - friendly[j]->getX());
-                  yDist = abs(oppBullets[i]->getRealY() - friendly[j]->getY());
-                  zDist = abs(oppBullets[i]->getRealZ() - friendly[j]->getZ());
-                  dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                  j++;
+               } while (!shellCollision && j < enemy.size());
+            } // end if
+            // Check for shell collisions with houses
+            if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - house[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - house[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
+                  if (dist < house[j]->getRadius()) {
+                     shellCollision = true;
+                     house[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&oppShells[i]);
+                     if (house[j]->isDestroyed() && house[j]->getExplosion() == 0) {
+                           house[j]->startExplosion();
+                           sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+               } while (!shellCollision && j < house.size());
+            } // end if
+            // Check for shell collisions with pine trees
+            if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - pine[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - pine[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
+                  if (dist < pine[j]->getRadius()) {
+                     shellCollision = true;
+                     pine[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&oppShells[i]);
+                     if (pine[j]->isDestroyed() && pine[j]->getExplosion() == 0) {
+                        pine[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+               } while (!shellCollision && j < pine.size());
+            } // end if
+            // Check for shell collisions with small pine trees
+            if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - smallPine[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - smallPine[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
+                  if (dist < smallPine[j]->getRadius()) {
+                     shellCollision = true;
+                     smallPine[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&oppShells[i]);
+                     if (smallPine[j]->isDestroyed() && smallPine[j]->getExplosion() == 0) {
+                        smallPine[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+               } while (!shellCollision && j < smallPine.size());
+            } // end if
+            // Check for shell collisions with silos
+            if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - silo[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - silo[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
+                  if (dist < silo[j]->getRadius()) {
+                     shellCollision = true;
+                     silo[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&shells[i]);
+                     if (silo[j]->isDestroyed() && silo[j]->getExplosion() == 0) {
+                        silo[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+               } while (!shellCollision && j < silo.size());
+            } // end if
+            // Check for shell collisions with friendly tanks
+            if (!shellCollision) {
+               int j = 0;
+               do {
+                  xDist = abs(oppShells[i]->getRealX() - friendly[j]->getX());
+                  zDist = abs(oppShells[i]->getRealZ() - friendly[j]->getZ());
+                  dist = sqrt(xDist * xDist + zDist * zDist);
                   if (dist < friendly[j]->getRadius()) {
-                     bulletCollision = true;
-                     friendly[j]->takeDamage(oppBullets[i]->getDamage());
-                     delete oppBullets[i];
-                     oppBullets.erase(&oppBullets[i]);
+                     shellCollision = true;
+                     friendly[j]->takeDamage(oppShells[i]->getDamage());
+                     delete oppShells[i];
+                     oppShells.erase(&oppShells[i]);
                      if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
                         friendly[j]->startExplosion();
                         sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                      } // end if
                   } // end if
                   j++;
-            } while (!bulletCollision && j < friendly.size());
-         } // end if */
-      } // end for
-   } // end if
-
-   // Only do movement collision detection if it is enabled and the tank is moving
-   if (collisionDetection && !gameOver && 
-       (ourTank.getSpeed() > 0.05 || ourTank.getSpeed() < -0.05)) {
-      if (multiPlayer) {
-      // Check for collisions with the opponent
-         xDist = abs(-viewPointX + opponent.getX());
-         zDist = abs(-viewPointZ + opponent.getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + opponent.getRadius();
-         float relBrg = calculateRelativeBearing(-opponent.getX(), -opponent.getZ());
-         float relHdg = opponent.getAzimuth() - azimuth;
-         if (relHdg < 0) {
-            relHdg += 360;
-         } // end if
-         if (dist <= minDist) {
-            if (opponent.isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (opponent.isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!opponent.isForwardCollided() && !opponent.isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeRammingDamage(opponent.getAzimuth(), opponent.getSpeed());
-//               ourTank.takeCollisionDamage(opponent.getPointValue());
-//               opponent.takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
-                  score += opponent.getPointValue();
-                  opponent.startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               if (relBrg < 30 || relBrg > 330) {
-                  if (relHdg > 45 && relHdg < 315) {
-                     ourTank.stop();
-                     opponent.forwardCollide();
-                  } else if (relHdg <= 45 || relHdg >= 315) {
-                     if (ourTank.getSpeed() > opponent.getSpeed()) {
-                        ourTank.setSpeed(opponent.getSpeed());
-                        opponent.forwardCollide();
-                     } // end if
-                  } // end if-else
-               } // end if
-            } else if (opponent.isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (opponent.isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!opponent.isBackwardCollided() && !opponent.isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               ourTank.takeRammingDamage(opponent.getAzimuth(), opponent.getSpeed());
-//               ourTank.takeCollisionDamage(opponent.getPointValue());
-//               opponent.takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
-                  score += opponent.getPointValue();
-                  opponent.startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               if (relBrg > 150 && relBrg < 210) {
-                  if (relHdg > 45 && relHdg < 315) {
-                     ourTank.stop();
-                     opponent.backwardCollide();
-                  } else if (relHdg <= 45 || relHdg >= 315) {
-                     if (ourTank.getSpeed() > opponent.getSpeed()) {
-                        ourTank.setSpeed(opponent.getSpeed());
-                        opponent.backwardCollide();
-                     } // end if
-                  } // end if-else
-               } // end if
-            } // end if-else
-         } else {
-            if (opponent.isForwardCollided()) {
-               opponent.unForwardCollide();
-            } // end if
-            if (opponent.isBackwardCollided()) {
-               opponent.unBackwardCollide();
-            } // end if
-         } // end if-else
+               } while (!shellCollision && j < friendly.size());
+            } // end if */
+         } // end for
       } // end if
-      // Check for collisions with enemy tanks
-      for (i = 0; i < enemy.size(); i++) {
-         xDist = abs(-viewPointX - enemy[i]->getX());
-         zDist = abs(-viewPointZ - enemy[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + enemy[i]->getRadius();
-         if (dist <= minDist) {
-            if (enemy[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (enemy[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!enemy[i]->isForwardCollided() && !enemy[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(enemy[i]->getPointValue());
-               enemy[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 5;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
+
+      // Draw the bullets from the .50 machine gun
+      for (i = 0; i < (int) bullets.size(); i++) {
+         bulletCollision = false;
+         glPushMatrix();
+            glTranslatef(bullets[i]->getX(), bullets[i]->getY(), bullets[i]->getZ());
+            glRotatef(-(bullets[i]->getAzimuth()), 0, 1, 0);
+            glTranslatef(0.0f, -0.55f, -1.5f);
+            glRotatef(bullets[i]->getElevation(), 1, 0, 0);
+            glRotatef(-bullets[i]->getRotation(), 0, 1, 0);
+            glTranslatef(0.0f, 0.0f, -2.0f - bullets[i]->getRange());
+            bullets[i]->draw();
+         glPopMatrix();
+         // Check for bullet collisions with the opponent
+         // NOTE: PROBABLY NEED TO CHANGE THIS FOR MULTI-PLAYER SO
+         // THAT THE OPPONENT IS CHECKING FOR COLLISION WITH OUR
+         // SHELLS
+         if (multiPlayer && !bulletCollision) {
+            xDist = fabsf(bullets[i]->getRealX() + opponent.getX());
+            yDist = fabsf(bullets[i]->getRealY() - 0.75f);
+            zDist = fabsf(bullets[i]->getRealZ() + opponent.getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+            if (dist < opponent.getRadius()) {
+               bulletCollision = true;
+               if (opponent.getDamageCapacity() > 0) {
+                  opponent.takeDamage(bullets[i]->getDamage());
                } // end if
-               if (enemy[i]->isDestroyed() && enemy[i]->getExplosion() == 0) {
-                  score += enemy[i]->getPointValue();
-                  enemy[i]->startExplosion();
+               if (multiPlayer && opponent.getDamageCapacity() > 0) {
+                  Packet *packet = new Packet;
+                  packet->packetType = 3;
+                  packet->damage = bullets[i]->getDamage();
+                  int len = sizeof(*packet);
+                  if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		               CheckError(m_connectSocket.GetLastError());
+                     OnDisconnect();
+	               } // end if
+                  delete packet;
+               } // end if
+               delete bullets[i];
+               bullets.erase(&bullets[i]);
+               if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
+                  score += opponent.getPointValue();
+                  opponent.startExplosion();
                   sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                } // end if
-               ourTank.stop();
-               enemy[i]->forwardCollide();
-            } else if (enemy[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (enemy[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!enemy[i]->isBackwardCollided() && !enemy[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(enemy[i]->getPointValue());
-               enemy[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 5;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (enemy[i]->isDestroyed() && enemy[i]->getExplosion() == 0) {
-                  score += enemy[i]->getPointValue();
-                  enemy[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               ourTank.stop();
-               enemy[i]->backwardCollide();
-            } // end if-else
-         } else {
-            if (enemy[i]->isForwardCollided()) {
-               enemy[i]->unForwardCollide();
             } // end if
-            if (enemy[i]->isBackwardCollided()) {
-               enemy[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
+         } // end if
+         // Check for bullet collisions with enemy tanks
+         int j = 0;
+         do {
+               xDist = fabsf(bullets[i]->getRealX() - enemy[j]->getX());
+               yDist = fabsf(bullets[i]->getRealY() - enemy[j]->getY());
+               zDist = fabsf(bullets[i]->getRealZ() - enemy[j]->getZ());
+               dist = (GLfloat) sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+               if (dist < enemy[j]->getRadius()) {
+                  bulletCollision = true;
+                  enemy[j]->takeDamage(bullets[i]->getDamage());
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 4;
+                     packet->id = j;
+                     packet->damage = bullets[i]->getDamage();
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  delete bullets[i];
+                  bullets.erase(&bullets[i]);
+                  if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
+                     score += enemy[j]->getPointValue();
+                     enemy[j]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+               } // end if
+               j++;
+         } while (!bulletCollision && j < (int) enemy.size());
+         // Check for bullet collisions with friendly tanks
+         if (!bulletCollision) {
+            int j = 0;
+            do {
+                  xDist = fabsf(bullets[i]->getRealX() - friendly[j]->getX());
+                  yDist = fabsf(bullets[i]->getRealY() - friendly[j]->getY());
+                  zDist = fabsf(bullets[i]->getRealZ() - friendly[j]->getZ());
+                  dist = (GLfloat) sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                  if (dist < friendly[j]->getRadius()) {
+                     bulletCollision = true;
+                     friendly[j]->takeDamage(bullets[i]->getDamage());
+                     if (multiPlayer) {
+                        Packet *packet = new Packet;
+                        packet->packetType = 5;
+                        packet->id = j;
+                        packet->damage = bullets[i]->getDamage();
+                        int len = sizeof(*packet);
+                        if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                     CheckError(m_connectSocket.GetLastError());
+                           OnDisconnect();
+	                     } // end if
+                        delete packet;
+                     } // end if
+                     delete bullets[i];
+                     bullets.erase(&bullets[i]);
+                     if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
+                        score += friendly[j]->getPointValue();
+                        friendly[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+            } while (!bulletCollision && j < (int) friendly.size());
+         } // end if 
       } // end for
-      // Check for collisions with houses
-      for (i = 0; i < house.size(); i++) {
-         xDist = abs(-viewPointX - house[i]->getX());
-         zDist = abs(-viewPointZ - house[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + house[i]->getRadius();
-         if (dist <= minDist) {
-            if (house[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (house[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!house[i]->isForwardCollided() && !house[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(house[i]->getPointValue());
-               house[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 6;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (house[i]->isDestroyed() && house[i]->getExplosion() == 0) {
-                  score += house[i]->getPointValue();
-                  house[i]->startExplosion();
+
+      // Draw the bullets from the opponent's .50 machine gun
+      if (multiPlayer) {
+         for (i = 0; i < (int) oppBullets.size(); i++) {
+            bulletCollision = false;
+            glPushMatrix();
+               glTranslatef(oppBullets[i]->getX(), oppBullets[i]->getY(), oppBullets[i]->getZ());
+               glRotatef(-(oppBullets[i]->getAzimuth()), 0, 1, 0);
+               glTranslatef(0, -0.55f, -1.5f);
+               glRotatef(oppBullets[i]->getElevation(), 1, 0, 0);
+               glRotatef(-oppBullets[i]->getRotation(), 0, 1, 0);
+               glTranslatef(0, 0, -2.0f - oppBullets[i]->getRange());
+               oppBullets[i]->draw();
+            glPopMatrix();
+         // Check for bullet collisions with us
+   /*      if (!bulletCollision) {
+            xDist = abs(oppBullets[i]->getRealX() - ourTank.getX());
+            yDist = abs(oppBullets[i]->getRealY() - 0.75f);
+            zDist = abs(-oppBullets[i]->getRealZ() + ourTank.getZ());
+            dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+            i = sprintf(buffer, "xDist: %.1f\tyDist: %.1f\tzDist: %.1f\r\n", xDist, yDist, zDist);
+            console::output(buffer);
+            if (dist < ourTank.getRadius()) {
+               bulletCollision = true;
+               ourTank.takeDamage(oppBullets[i]->getDamage());
+               delete oppBullets[i];
+               oppBullets.erase(&oppBullets[i]);
+               if (ourTank.isDestroyed() && ourTank.getExplosion() == 0) {
+                  ourTank.startExplosion();
                   sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
                } // end if
-               ourTank.stop();
-               house[i]->forwardCollide();
-            } else if (house[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (house[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!house[i]->isBackwardCollided() && !house[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(house[i]->getPointValue());
-               house[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 5;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
+            } // end if
+         } // end if
+            // Check for bullet collisions with enemy tanks
+      /*      int j = 0;
+            do {
+                  xDist = abs(oppBullets[i]->getRealX() - enemy[j]->getX());
+                  yDist = abs(oppBullets[i]->getRealY() - enemy[j]->getY());
+                  zDist = abs(oppBullets[i]->getRealZ() - enemy[j]->getZ());
+                  dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                  if (dist < enemy[j]->getRadius()) {
+                     bulletCollision = true;
+                     enemy[j]->takeDamage(oppBullets[i]->getDamage());
+                     delete oppBullets[i];
+                     oppBullets.erase(&oppBullets[i]);
+                     if (enemy[j]->isDestroyed() && enemy[j]->getExplosion() == 0) {
+                        enemy[j]->startExplosion();
+                        sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                     } // end if
+                  } // end if
+                  j++;
+            } while (!bulletCollision && j < enemy.size());
+            // Check for bullet collisions with friendly tanks
+            if (!bulletCollision) {
+               int j = 0;
+               do {
+                     xDist = abs(oppBullets[i]->getRealX() - friendly[j]->getX());
+                     yDist = abs(oppBullets[i]->getRealY() - friendly[j]->getY());
+                     zDist = abs(oppBullets[i]->getRealZ() - friendly[j]->getZ());
+                     dist = sqrt(xDist * xDist + yDist * yDist + zDist * zDist);
+                     if (dist < friendly[j]->getRadius()) {
+                        bulletCollision = true;
+                        friendly[j]->takeDamage(oppBullets[i]->getDamage());
+                        delete oppBullets[i];
+                        oppBullets.erase(&oppBullets[i]);
+                        if (friendly[j]->isDestroyed() && friendly[j]->getExplosion() == 0) {
+                           friendly[j]->startExplosion();
+                           sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                        } // end if
+                     } // end if
+                     j++;
+               } while (!bulletCollision && j < friendly.size());
+            } // end if */
+         } // end for
+      } // end if
+
+      // NOTE: PROBABLY WANT TO DECOUPLE COLLISION CODE FOR TANKS RUNNING INTO THINGS
+      // FROM THE SCENE RENDERING CODE AND HAVE IT CHECK AT A SLOWER RATE THAN FRAME
+      // RATE
+
+      // Only do movement collision detection if it is enabled, the tank is moving,
+      // and the game is NOT over
+      if (collisionDetection && !gameOver && 
+          (ourTank.getSpeed() > 0.05 || ourTank.getSpeed() < -0.05)) {
+         // Only check for collisions with the opponent if in a multi-player game
+         if (multiPlayer) {
+         // Check for collisions with the opponent
+            xDist = fabsf(-viewPointX + opponent.getX());
+            zDist = fabsf(-viewPointZ + opponent.getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + opponent.getRadius();
+            float relBrg = calculateRelativeBearing(-opponent.getX(), -opponent.getZ());
+            float relHdg = opponent.getAzimuth() - azimuth;
+            if (relHdg < 0) {
+               relHdg += 360.0f;
+            } // end if
+            if (dist <= minDist) {
+               if (opponent.isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (opponent.isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!opponent.isForwardCollided() && !opponent.isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeRammingDamage(opponent.getAzimuth(), opponent.getSpeed());
+   //               ourTank.takeCollisionDamage(opponent.getPointValue());
+   //               opponent.takeDamage(ourTank.getSpeed()/2.0 * 20.0);
+                  if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
+                     score += opponent.getPointValue();
+                     opponent.startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  if (relBrg < 30 || relBrg > 330) {
+                     if (relHdg > 45 && relHdg < 315) {
+                        ourTank.stop();
+                        opponent.forwardCollide();
+                     } else if (relHdg <= 45 || relHdg >= 315) {
+                        if (ourTank.getSpeed() > opponent.getSpeed()) {
+                           ourTank.setSpeed(opponent.getSpeed());
+                           opponent.forwardCollide();
+                        } // end if
+                     } // end if-else
+                  } // end if
+               } else if (opponent.isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (opponent.isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!opponent.isBackwardCollided() && !opponent.isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  ourTank.takeRammingDamage(opponent.getAzimuth(), opponent.getSpeed());
+   //               ourTank.takeCollisionDamage(opponent.getPointValue());
+   //               opponent.takeDamage(ourTank.getSpeed()/2.0 * 20.0);
+                  if (opponent.isDestroyed() && opponent.getExplosion() == 0) {
+                     score += opponent.getPointValue();
+                     opponent.startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  if (relBrg > 150 && relBrg < 210) {
+                     if (relHdg > 45 && relHdg < 315) {
+                        ourTank.stop();
+                        opponent.backwardCollide();
+                     } else if (relHdg <= 45 || relHdg >= 315) {
+                        if (ourTank.getSpeed() > opponent.getSpeed()) {
+                           ourTank.setSpeed(opponent.getSpeed());
+                           opponent.backwardCollide();
+                        } // end if
+                     } // end if-else
+                  } // end if
+               } // end if-else
+            } else {
+               if (opponent.isForwardCollided()) {
+                  opponent.unForwardCollide();
                } // end if
-               if (house[i]->isDestroyed() && house[i]->getExplosion() == 0) {
-                  score += house[i]->getPointValue();
-                  house[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               if (opponent.isBackwardCollided()) {
+                  opponent.unBackwardCollide();
                } // end if
-               ourTank.stop();
-               house[i]->backwardCollide();
             } // end if-else
-         } else {
-            if (house[i]->isForwardCollided()) {
-               house[i]->unForwardCollide();
-            } // end if
-            if (house[i]->isBackwardCollided()) {
-               house[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-      // Check for collisions with pine trees
-      for (i = 0; i < pine.size(); i++) {
-         xDist = abs(-viewPointX - pine[i]->getX());
-         zDist = abs(-viewPointZ - pine[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + pine[i]->getRadius();
-         if (dist <= minDist) {
-            if (pine[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (pine[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!pine[i]->isForwardCollided() && !pine[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(pine[i]->getPointValue());
-               pine[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+         } // end if
+         // Check for collisions with enemy tanks
+         for (i = 0; i < (int) enemy.size(); i++) {
+            xDist = fabsf(-viewPointX - enemy[i]->getX());
+            zDist = fabsf(-viewPointZ - enemy[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + enemy[i]->getRadius();
+            if (dist <= minDist) {
+               if (enemy[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (enemy[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!enemy[i]->isForwardCollided() && !enemy[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(enemy[i]->getPointValue());
+                  enemy[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 5;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 7;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+                  } // end if
+                  if (enemy[i]->isDestroyed() && enemy[i]->getExplosion() == 0) {
+                     score += enemy[i]->getPointValue();
+                     enemy[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  enemy[i]->forwardCollide();
+               } else if (enemy[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (enemy[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!enemy[i]->isBackwardCollided() && !enemy[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(enemy[i]->getPointValue());
+                  enemy[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 5;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
+                  } // end if
+                  if (enemy[i]->isDestroyed() && enemy[i]->getExplosion() == 0) {
+                     score += enemy[i]->getPointValue();
+                     enemy[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  enemy[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (enemy[i]->isForwardCollided()) {
+                  enemy[i]->unForwardCollide();
                } // end if
-               if (pine[i]->isDestroyed() && pine[i]->getExplosion() == 0) {
-                  score += pine[i]->getPointValue();
-                  pine[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               if (enemy[i]->isBackwardCollided()) {
+                  enemy[i]->unBackwardCollide();
                } // end if
-               ourTank.stop();
-               pine[i]->forwardCollide();
-            } else if (pine[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (pine[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!pine[i]->isBackwardCollided() && !pine[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(pine[i]->getPointValue());
-               pine[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 5;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (pine[i]->isDestroyed() && pine[i]->getExplosion() == 0) {
-                  score += pine[i]->getPointValue();
-                  pine[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               ourTank.stop();
-               pine[i]->backwardCollide();
             } // end if-else
-         } else {
-            if (pine[i]->isForwardCollided()) {
-               pine[i]->unForwardCollide();
-            } // end if
-            if (pine[i]->isBackwardCollided()) {
-               pine[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-      // Check for collisions with small pine trees
-      for (i = 0; i < smallPine.size(); i++) {
-         xDist = abs(-viewPointX - smallPine[i]->getX());
-         zDist = abs(-viewPointZ - smallPine[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + smallPine[i]->getRadius();
-         if (dist <= minDist) {
-            if (smallPine[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (smallPine[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!smallPine[i]->isForwardCollided() && !smallPine[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(smallPine[i]->getPointValue());
-               smallPine[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+         } // end for
+         // Check for collisions with houses
+         for (i = 0; i < (int) house.size(); i++) {
+            xDist = fabsf(-viewPointX - house[i]->getX());
+            zDist = fabsf(-viewPointZ - house[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + house[i]->getRadius();
+            if (dist <= minDist) {
+               if (house[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (house[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!house[i]->isForwardCollided() && !house[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(house[i]->getPointValue());
+                  house[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 6;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 8;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+                  } // end if
+                  if (house[i]->isDestroyed() && house[i]->getExplosion() == 0) {
+                     score += house[i]->getPointValue();
+                     house[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  house[i]->forwardCollide();
+               } else if (house[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (house[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!house[i]->isBackwardCollided() && !house[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(house[i]->getPointValue());
+                  house[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 5;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
+                  } // end if
+                  if (house[i]->isDestroyed() && house[i]->getExplosion() == 0) {
+                     score += house[i]->getPointValue();
+                     house[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  house[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (house[i]->isForwardCollided()) {
+                  house[i]->unForwardCollide();
                } // end if
-               if (smallPine[i]->isDestroyed() && smallPine[i]->getExplosion() == 0) {
-                  score += smallPine[i]->getPointValue();
-                  smallPine[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               if (house[i]->isBackwardCollided()) {
+                  house[i]->unBackwardCollide();
                } // end if
-               ourTank.stop();
-               smallPine[i]->forwardCollide();
-            } else if (smallPine[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (smallPine[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!smallPine[i]->isBackwardCollided() && !smallPine[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(smallPine[i]->getPointValue());
-               smallPine[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 8;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (smallPine[i]->isDestroyed() && smallPine[i]->getExplosion() == 0) {
-                  score += smallPine[i]->getPointValue();
-                  smallPine[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               ourTank.stop();
-               smallPine[i]->backwardCollide();
             } // end if-else
-         } else {
-            if (smallPine[i]->isForwardCollided()) {
-               smallPine[i]->unForwardCollide();
-            } // end if
-            if (smallPine[i]->isBackwardCollided()) {
-               smallPine[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-      // Check for collisions with silos
-      for (i = 0; i < silo.size(); i++) {
-         xDist = abs(-viewPointX - silo[i]->getX());
-         zDist = abs(-viewPointZ - silo[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + silo[i]->getRadius();
-         if (dist <= minDist) {
-            if (silo[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (silo[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!silo[i]->isForwardCollided() && !silo[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(silo[i]->getPointValue());
-               silo[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+         } // end for
+         // Check for collisions with pine trees
+         for (i = 0; i < (int) pine.size(); i++) {
+            xDist = fabsf(-viewPointX - pine[i]->getX());
+            zDist = fabsf(-viewPointZ - pine[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + pine[i]->getRadius();
+            if (dist <= minDist) {
+               if (pine[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (pine[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!pine[i]->isForwardCollided() && !pine[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(pine[i]->getPointValue());
+                  pine[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 7;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 9;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+                  } // end if
+                  if (pine[i]->isDestroyed() && pine[i]->getExplosion() == 0) {
+                     score += pine[i]->getPointValue();
+                     pine[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  pine[i]->forwardCollide();
+               } else if (pine[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (pine[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!pine[i]->isBackwardCollided() && !pine[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(pine[i]->getPointValue());
+                  pine[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 5;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
+                  } // end if
+                  if (pine[i]->isDestroyed() && pine[i]->getExplosion() == 0) {
+                     score += pine[i]->getPointValue();
+                     pine[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  pine[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (pine[i]->isForwardCollided()) {
+                  pine[i]->unForwardCollide();
                } // end if
-               if (silo[i]->isDestroyed() && silo[i]->getExplosion() == 0) {
-                  score += silo[i]->getPointValue();
-                  silo[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               if (pine[i]->isBackwardCollided()) {
+                  pine[i]->unBackwardCollide();
                } // end if
-               ourTank.stop();
-               silo[i]->forwardCollide();
-            } else if (silo[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (silo[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!silo[i]->isBackwardCollided() && !silo[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(silo[i]->getPointValue());
-               silo[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 9;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (silo[i]->isDestroyed() && silo[i]->getExplosion() == 0) {
-                  score += silo[i]->getPointValue();
-                  silo[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               ourTank.stop();
-               silo[i]->backwardCollide();
             } // end if-else
-         } else {
-            if (silo[i]->isForwardCollided()) {
-               silo[i]->unForwardCollide();
-            } // end if
-            if (silo[i]->isBackwardCollided()) {
-               silo[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-      // Check for collisions with friendly tanks
-      for (i = 0; i < friendly.size(); i++) {
-         xDist = abs(-viewPointX - friendly[i]->getX());
-         zDist = abs(-viewPointZ - friendly[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + friendly[i]->getRadius();
-         if (dist <= minDist) {
-            if (friendly[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (friendly[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!friendly[i]->isForwardCollided() && !friendly[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               float damage = ourTank.takeCollisionDamage(friendly[i]->getPointValue());
-               friendly[i]->takeDamage(ourTank.getSpeed()/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+         } // end for
+         // Check for collisions with small pine trees
+         for (i = 0; i < (int) smallPine.size(); i++) {
+            xDist = fabsf(-viewPointX - smallPine[i]->getX());
+            zDist = fabsf(-viewPointZ - smallPine[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + smallPine[i]->getRadius();
+            if (dist <= minDist) {
+               if (smallPine[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (smallPine[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!smallPine[i]->isForwardCollided() && !smallPine[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(smallPine[i]->getPointValue());
+                  smallPine[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 8;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 4;
-                  packet->id = i;
-                  packet->damage = ourTank.getSpeed()/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
+                  } // end if
+                  if (smallPine[i]->isDestroyed() && smallPine[i]->getExplosion() == 0) {
+                     score += smallPine[i]->getPointValue();
+                     smallPine[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  smallPine[i]->forwardCollide();
+               } else if (smallPine[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (smallPine[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!smallPine[i]->isBackwardCollided() && !smallPine[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(smallPine[i]->getPointValue());
+                  smallPine[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
+                     packet = new Packet;
+                     packet->packetType = 8;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
                      delete packet;
-                  } // end if-else
+                  } // end if
+                  if (smallPine[i]->isDestroyed() && smallPine[i]->getExplosion() == 0) {
+                     score += smallPine[i]->getPointValue();
+                     smallPine[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  smallPine[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (smallPine[i]->isForwardCollided()) {
+                  smallPine[i]->unForwardCollide();
                } // end if
-               if (friendly[i]->isDestroyed() && friendly[i]->getExplosion() == 0) {
-                  score += friendly[i]->getPointValue();
-                  friendly[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+               if (smallPine[i]->isBackwardCollided()) {
+                  smallPine[i]->unBackwardCollide();
                } // end if
-               ourTank.stop();
-               friendly[i]->forwardCollide();
-            } else if (friendly[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (friendly[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!friendly[i]->isBackwardCollided() && !friendly[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               float damage = ourTank.takeCollisionDamage(friendly[i]->getPointValue());
-               friendly[i]->takeDamage(abs(ourTank.getSpeed())/2.0 * 20.0);
-               if (multiPlayer) {
-                  Packet *packet = new Packet;
-                  packet->packetType = 11;
-                  packet->damage = damage;
-                  int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-                  packet = new Packet;
-                  packet->packetType = 4;
-                  packet->id = i;
-                  packet->damage = abs(ourTank.getSpeed())/2.0 * 20.0;
-                  len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
-               } // end if
-               if (friendly[i]->isDestroyed() && friendly[i]->getExplosion() == 0) {
-                  score += friendly[i]->getPointValue();
-                  friendly[i]->startExplosion();
-                  sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
-               } // end if
-               ourTank.stop();
-               friendly[i]->backwardCollide();
             } // end if-else
-         } else {
-            if (friendly[i]->isForwardCollided()) {
-               friendly[i]->unForwardCollide();
-            } // end if
-            if (friendly[i]->isBackwardCollided()) {
-               friendly[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-      // Check for collisions with mountains
-      for (i = 0; i < pyramid.size(); i++) {
-         xDist = abs(-viewPointX - pyramid[i]->getX());
-         zDist = abs(-viewPointZ - pyramid[i]->getZ());
-         dist = sqrt(xDist * xDist + zDist * zDist);
-         minDist = ourTank.getRadius() + pyramid[i]->getRadius();
-         if (dist <= minDist) {
-            if (pyramid[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
-               ourTank.stop();
-            } else if (pyramid[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
-               // do nothing
-            } else if (!pyramid[i]->isForwardCollided() && !pyramid[i]->isBackwardCollided()
-                       && ourTank.getSpeed() > 0) {
-               ourTank.stop();
-               pyramid[i]->forwardCollide();
-            } else if (pyramid[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
-               ourTank.stop();
-            } else if (pyramid[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
-               // do nothing
-            } else if (!pyramid[i]->isBackwardCollided() && !pyramid[i]->isForwardCollided()
-                       && ourTank.getSpeed() < 0) {
-               ourTank.stop();
-               pyramid[i]->backwardCollide();
+         } // end for
+         // Check for collisions with silos
+         for (i = 0; i < (int) silo.size(); i++) {
+            xDist = fabsf(-viewPointX - silo[i]->getX());
+            zDist = fabsf(-viewPointZ - silo[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + silo[i]->getRadius();
+            if (dist <= minDist) {
+               if (silo[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (silo[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!silo[i]->isForwardCollided() && !silo[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(silo[i]->getPointValue());
+                  silo[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                     packet = new Packet;
+                     packet->packetType = 9;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  if (silo[i]->isDestroyed() && silo[i]->getExplosion() == 0) {
+                     score += silo[i]->getPointValue();
+                     silo[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  silo[i]->forwardCollide();
+               } else if (silo[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (silo[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!silo[i]->isBackwardCollided() && !silo[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(silo[i]->getPointValue());
+                  silo[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                     packet = new Packet;
+                     packet->packetType = 9;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  if (silo[i]->isDestroyed() && silo[i]->getExplosion() == 0) {
+                     score += silo[i]->getPointValue();
+                     silo[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  silo[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (silo[i]->isForwardCollided()) {
+                  silo[i]->unForwardCollide();
+               } // end if
+               if (silo[i]->isBackwardCollided()) {
+                  silo[i]->unBackwardCollide();
+               } // end if
             } // end if-else
-         } else {
-            if (pyramid[i]->isForwardCollided()) {
-               pyramid[i]->unForwardCollide();
-            } // end if
-            if (pyramid[i]->isBackwardCollided()) {
-               pyramid[i]->unBackwardCollide();
-            } // end if
-         } // end if-else
-      } // end for
-   } // end if
-} else {
-	// Draw title screen
-   glPushMatrix();
-      glScalef(2.0f, 1.0f, 1.0f);
-      glColor3f(1.0, 0.0, 0.0);
-      glTranslatef(-1.0f, 0.0f, -10.0f);
-      strokeFont.renderText("Tank");
-   glPopMatrix();
-   glPushMatrix();
-      glScalef(2.0f, 1.0f, 1.0f);
-      glColor3f(1.0, 0.0, 0.0);
-      glTranslatef(-2.5f, -1.5f, -10.0f);
-      strokeFont.renderText("Commander");
-   glPopMatrix();
-} // end if-else
+         } // end for
+         // Check for collisions with friendly tanks
+         for (i = 0; i < (int) friendly.size(); i++) {
+            xDist = fabsf(-viewPointX - friendly[i]->getX());
+            zDist = fabsf(-viewPointZ - friendly[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + friendly[i]->getRadius();
+            if (dist <= minDist) {
+               if (friendly[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (friendly[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!friendly[i]->isForwardCollided() && !friendly[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  float damage = ourTank.takeCollisionDamage(friendly[i]->getPointValue());
+                  friendly[i]->takeDamage(ourTank.getSpeed()/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                     packet = new Packet;
+                     packet->packetType = 4;
+                     packet->id = i;
+                     packet->damage = ourTank.getSpeed()/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  if (friendly[i]->isDestroyed() && friendly[i]->getExplosion() == 0) {
+                     score += friendly[i]->getPointValue();
+                     friendly[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  friendly[i]->forwardCollide();
+               } else if (friendly[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (friendly[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!friendly[i]->isBackwardCollided() && !friendly[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  float damage = ourTank.takeCollisionDamage(friendly[i]->getPointValue());
+                  friendly[i]->takeDamage(fabsf(ourTank.getSpeed())/2.0f * 20.0f);
+                  if (multiPlayer) {
+                     Packet *packet = new Packet;
+                     packet->packetType = 11;
+                     packet->damage = damage;
+                     int len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                     packet = new Packet;
+                     packet->packetType = 4;
+                     packet->id = i;
+                     packet->damage = fabsf(ourTank.getSpeed())/2.0f * 20.0f;
+                     len = sizeof(*packet);
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
+                  } // end if
+                  if (friendly[i]->isDestroyed() && friendly[i]->getExplosion() == 0) {
+                     score += friendly[i]->getPointValue();
+                     friendly[i]->startExplosion();
+                     sndPlaySound(explode, SND_ASYNC | SND_FILENAME );
+                  } // end if
+                  ourTank.stop();
+                  friendly[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (friendly[i]->isForwardCollided()) {
+                  friendly[i]->unForwardCollide();
+               } // end if
+               if (friendly[i]->isBackwardCollided()) {
+                  friendly[i]->unBackwardCollide();
+               } // end if
+            } // end if-else
+         } // end for
+         // Check for collisions with mountains
+         for (i = 0; i < (int) pyramid.size(); i++) {
+            xDist = fabsf(-viewPointX - pyramid[i]->getX());
+            zDist = fabsf(-viewPointZ - pyramid[i]->getZ());
+            dist = (GLfloat) sqrt(xDist * xDist + zDist * zDist);
+            minDist = ourTank.getRadius() + pyramid[i]->getRadius();
+            if (dist <= minDist) {
+               if (pyramid[i]->isForwardCollided() && ourTank.getSpeed() > 0.0) {
+                  ourTank.stop();
+               } else if (pyramid[i]->isForwardCollided() && ourTank.getSpeed() < 0.0) {
+                  // do nothing
+               } else if (!pyramid[i]->isForwardCollided() && !pyramid[i]->isBackwardCollided()
+                          && ourTank.getSpeed() > 0) {
+                  ourTank.stop();
+                  pyramid[i]->forwardCollide();
+               } else if (pyramid[i]->isBackwardCollided() && ourTank.getSpeed() < 0.0) {
+                  ourTank.stop();
+               } else if (pyramid[i]->isBackwardCollided() && ourTank.getSpeed() > 0.0) {
+                  // do nothing
+               } else if (!pyramid[i]->isBackwardCollided() && !pyramid[i]->isForwardCollided()
+                          && ourTank.getSpeed() < 0) {
+                  ourTank.stop();
+                  pyramid[i]->backwardCollide();
+               } // end if-else
+            } else {
+               if (pyramid[i]->isForwardCollided()) {
+                  pyramid[i]->unForwardCollide();
+               } // end if
+               if (pyramid[i]->isBackwardCollided()) {
+                  pyramid[i]->unBackwardCollide();
+               } // end if
+            } // end if-else
+         } // end for
+      } // end if
+   // This section is just for the beginning of the game
+   } else {
+	   // Draw title screen
+      glPushMatrix();
+         glScalef(2.0f, 1.0f, 1.0f);
+         glColor3f(1.0, 0.0, 0.0);
+         glTranslatef(-1.0f, 0.0f, -10.0f);
+         strokeFont.renderText("Tank");
+      glPopMatrix();
+      glPushMatrix();
+         glScalef(2.0f, 1.0f, 1.0f);
+         glColor3f(1.0, 0.0, 0.0);
+         glTranslatef(-2.5f, -1.5f, -10.0f);
+         strokeFont.renderText("Commander");
+      glPopMatrix();
+   } // end if-else
 } // end drawScene
 
+// This class handles the movement of the tank, shells, and bullets.
 void CMyOpenGLView::updateScene() {
 
    if (startGame && !gameOver) {
-      viewPointZ += (GLfloat) ourTank.getSpeed() * cos(azimuth * PI/180.0);
-      viewPointX -= (GLfloat) ourTank.getSpeed() * sin(azimuth * PI/180.0);
+      viewPointZ += (GLfloat) (ourTank.getSpeed() * cos(azimuth * PI/180.0));
+      viewPointX -= (GLfloat) (ourTank.getSpeed() * sin(azimuth * PI/180.0));
 
-      for (int i = 0; i < shells.size(); i++) {
+      for (int i = 0; i < (int) shells.size(); i++) {
          shells[i]->increaseRange();
          shells[i]->updateRealPosition();
-             if (abs(shells[i]->getRealX()) > 1000.0 || abs(shells[i]->getRealZ()) > 1000.0) {
+             if (fabsf(shells[i]->getRealX()) > 1000.0 || fabsf(shells[i]->getRealZ()) > 1000.0) {
                delete shells[i];
                shells.erase(&shells[i]);
             } // end if
       } // end for
-      for (i = 0; i < bullets.size(); i++) {
+      for (i = 0; i < (int) bullets.size(); i++) {
          bullets[i]->increaseRange();
          bullets[i]->updateRealPosition();
-             if (abs(bullets[i]->getRealX()) > 1000.0 || 
+             if (fabsf(bullets[i]->getRealX()) > 1000.0 || 
                  bullets[i]->getRealY() <= 0.0 ||
-                 abs(bullets[i]->getRealZ()) > 1000.0 ||
+                 fabsf(bullets[i]->getRealZ()) > 1000.0 ||
                  bullets[i]->getRange() > 100.0) {
                delete bullets[i];
                bullets.erase(&bullets[i]);
@@ -2553,20 +2249,20 @@ void CMyOpenGLView::updateScene() {
       } // end for
 
       if (multiPlayer) {
-         for (int i = 0; i < oppShells.size(); i++) {
+         for (int i = 0; i < (int) oppShells.size(); i++) {
             oppShells[i]->increaseRange();
             oppShells[i]->updateRealPosition();
-                if (abs(oppShells[i]->getRealX()) > 1000.0 || abs(oppShells[i]->getRealZ()) > 1000.0) {
+                if (fabsf(oppShells[i]->getRealX()) > 1000.0 || fabsf(oppShells[i]->getRealZ()) > 1000.0) {
                   delete oppShells[i];
                   oppShells.erase(&oppShells[i]);
                } // end if
          } // end for
-         for (i = 0; i < oppBullets.size(); i++) {
+         for (i = 0; i < (int) oppBullets.size(); i++) {
             oppBullets[i]->increaseRange();
             oppBullets[i]->updateRealPosition();
-                if (abs(oppBullets[i]->getRealX()) > 1000.0 || 
+                if (fabsf(oppBullets[i]->getRealX()) > 1000.0 || 
                     oppBullets[i]->getRealY() <= 0.0 ||
-                    abs(oppBullets[i]->getRealZ()) > 1000.0 ||
+                    fabsf(oppBullets[i]->getRealZ()) > 1000.0 ||
                     oppBullets[i]->getRange() > 100.0) {
                   delete oppBullets[i];
                   oppBullets.erase(&oppBullets[i]);
@@ -2595,9 +2291,12 @@ void CMyOpenGLView::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CMyOpenGLView message handlers
 
+// Need a class like this for left button down, so the tank commander
+// can shoot the machine gun with the left mouse without having to move it
+// around.
 void CMyOpenGLView::OnRButtonDown(UINT nFlags, CPoint point) 
 {
-	int x = point.x;
+/*	int x = point.x;
 	int y = point.y;
 
    // Space for selection buffer
@@ -2639,7 +2338,7 @@ void CMyOpenGLView::OnRButtonDown(UINT nFlags, CPoint point)
    glPopMatrix();
 
    // Go back to modelview for normal rendering
-   glMatrixMode(GL_MODELVIEW);
+   glMatrixMode(GL_MODELVIEW);*/
 
 	COpenGLView::OnRButtonDown(nFlags, point);
 }
@@ -2764,23 +2463,11 @@ void CMyOpenGLView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
                      packet->z = -viewPointZ + 1;
                      packet->azimuth = azimuth;
                      int len = sizeof(*packet);
-                     if (server) {
-                        if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_receiveSocket.GetLastError());
-		                  m_receiveSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } else {
-	                     if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_clientSocket.GetLastError());
-		                  m_clientSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } // end if-else
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
                   } // end if
                } else if (shotFired && ElapsedTimeInMSSinceLastShot() >= 10000 
                           && ourTank.getShells() > 0) {
@@ -2798,23 +2485,11 @@ void CMyOpenGLView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
                      packet->z = -viewPointZ + 1;
                      packet->azimuth = azimuth;
                      int len = sizeof(*packet);
-                     if (server) {
-                        if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_receiveSocket.GetLastError());
-		                  m_receiveSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } else {
-	                     if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                     {
-		                  CheckError(m_clientSocket.GetLastError());
-		                  m_clientSocket.Close();
-                        multiPlayer = false;
-	                     }
-                        delete packet;
-                     } // end if-else
+                     if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		                  CheckError(m_connectSocket.GetLastError());
+                        OnDisconnect();
+	                  } // end if
+                     delete packet;
                   } // end if-else
                } // end if
             } // end if
@@ -2852,23 +2527,11 @@ void CMyOpenGLView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
                   packet->elevation = bullets.back()->getElevation();
                   packet->rotation = bullets.back()->getRotation();
                   int len = sizeof(*packet);
-                  if (server) {
-                     if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_receiveSocket.GetLastError());
-		               m_receiveSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } else {
-	                  if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	                  {
-		               CheckError(m_clientSocket.GetLastError());
-		               m_clientSocket.Close();
-                     multiPlayer = false;
-	                  }
-                     delete packet;
-                  } // end if-else
+                  if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		               CheckError(m_connectSocket.GetLastError());
+                     OnDisconnect();
+	               } // end if
+                  delete packet;
                } // end if
             } // end if
             break;
@@ -2906,23 +2569,11 @@ void CMyOpenGLView::OnMouseMove(UINT nFlags, CPoint point)
                packet->elevation = bullets.back()->getElevation();
                packet->rotation = bullets.back()->getRotation();
                int len = sizeof(*packet);
-               if (server) {
-                  if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_receiveSocket.GetLastError());
-		            m_receiveSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } else {
-	               if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	               {
-		            CheckError(m_clientSocket.GetLastError());
-		            m_clientSocket.Close();
-                  multiPlayer = false;
-	               }
-                  delete packet;
-               } // end if-else
+               if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		            CheckError(m_connectSocket.GetLastError());
+                  OnDisconnect();
+	            } // end if
+               delete packet;
             } // end if
          } // end if
 	   } // end if
@@ -3112,7 +2763,8 @@ bool CMyOpenGLView::setUpTextures() {
 	return true;
 }
 
-
+// Used for collisions between two moving tanks to create a damage
+// scheme based loosely on "Car Wars."
 float CMyOpenGLView::calculateRelativeBearing(float oppX, float oppZ) {
 
    float deltaX, deltaZ;
@@ -3135,13 +2787,13 @@ float CMyOpenGLView::calculateRelativeBearing(float oppX, float oppZ) {
          heading = 270;
       } // end if-else
    } else if (oppX > (-viewPointX) && oppZ < (-viewPointZ)) {
-      heading = atan(deltaX / (-deltaZ)) * 180.0f / PI;
+      heading = (float) (atan(deltaX / (-deltaZ)) * 180.0f / PI);
    } else if (oppX > (-viewPointX) && oppZ > (-viewPointZ)) {
-      heading = 90 + atan(deltaZ / deltaX) * 180.0f / PI;
+      heading = (float) (90 + atan(deltaZ / deltaX) * 180.0f / PI);
    } else if (oppX < (-viewPointX) && oppZ > (-viewPointZ)) {
-      heading =  180 - atan(deltaX / deltaZ) * 180.0f / PI;
+      heading = (float) (180 - atan(deltaX / deltaZ) * 180.0f / PI);
    } else { // (pilotX < enemyX && pilotY < enemyY)
-      heading = 360 - atan(deltaX / deltaZ) * 180.0f / PI;
+      heading = (float) (360 - atan(deltaX / deltaZ) * 180.0f / PI);
    } // end if-else
 
    relativeBearing = heading - azimuth;
@@ -3152,7 +2804,8 @@ float CMyOpenGLView::calculateRelativeBearing(float oppX, float oppZ) {
    return relativeBearing;
 } // end calculateRelativeBearing
 
-
+// In a multi-player game, you are respawned to one of four
+// spawning sites after you are killed.
 void CMyOpenGLView::respawn() {
    int previousSpawn = spawnSite;
    do {
@@ -3175,23 +2828,11 @@ void CMyOpenGLView::respawn() {
    packet->id = spawnSite;
    packet->spawnSiteActive = true;
    int len = sizeof(*packet);
-   if (server) {
-      if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	   {
-		CheckError(m_receiveSocket.GetLastError());
-		m_receiveSocket.Close();
-      multiPlayer = false;
-	   }
-      delete packet;
-   } else {
-	   if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	   {
-		CheckError(m_clientSocket.GetLastError());
-		m_clientSocket.Close();
-      multiPlayer = false;
-	   }
-      delete packet;
-   } // end if-else
+   if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		CheckError(m_connectSocket.GetLastError());
+      OnDisconnect();
+	} // end if
+   delete packet;
 }
 
 
@@ -3209,20 +2850,23 @@ void CMyOpenGLView::OnCollisionOff()
 	
 }
 
+// Here's the heinous network code
+// Need to look at using some better written network classes.
+
 void CMyOpenGLView::OnHost() 
 {
 //   char buffer[50];
    CString peerName;
    UINT* port = (UINT*) &m_iPort;
 	// TODO: Add your command handler code here
-	m_serverSocket.Create(m_iPort);
-	if (!m_serverSocket.Listen())
+	m_listenSocket.Create(m_iPort);
+	if (!m_listenSocket.Listen())
 	{
 		AfxMessageBox("Listen() Failed!");
-		m_serverSocket.Close();
+		m_listenSocket.Close();
 	}
    server = true;
-   m_serverSocket.GetSockName(peerName, *port);
+   m_listenSocket.GetSockName(peerName, *port);
 /*   int i = 0;
       i =  sprintf(buffer, "Socket address: ");
       console::output(buffer);
@@ -3249,19 +2893,20 @@ void CMyOpenGLView::OnHost()
    pNetworkMenu->DeleteMenu(ID_HOST, MF_BYCOMMAND);
    pNetworkMenu->DeleteMenu(ID_JOIN, MF_BYCOMMAND);
    pNetworkMenu->AppendMenu(MF_STRING, ID_DISCONNECT, "Disconnect");
+   AfxGetMainWnd()->DrawMenuBar();
 }
 
 void CMyOpenGLView::OnJoin() 
 {
 	// TODO: Add your command handler code here
-	if (!m_clientSocket.Create())
+	if (!m_connectSocket.Create())
 	{
 		AfxMessageBox("Failed to create Socket");
 	}
 
    if (joinDialog.DoModal() == IDOK) {
       CString hostAddress = joinDialog.m_ipAdd;
-	   if (m_clientSocket.Connect(hostAddress, 12345))
+	   if (m_connectSocket.Connect(hostAddress, 12345))
 	   {
          multiPlayer = true;
          startGame = true;
@@ -3282,23 +2927,11 @@ void CMyOpenGLView::OnJoin()
          packet->id = spawnSite;
          packet->spawnSiteActive = true;
          int len = sizeof(*packet);
-         if (server) {
-            if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	         {
-		      CheckError(m_receiveSocket.GetLastError());
-		      m_receiveSocket.Close();
-            multiPlayer = false;
-	         }
-            delete packet;
-         } else {
-	         if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	         {
-		      CheckError(m_clientSocket.GetLastError());
-		      m_clientSocket.Close();
-            multiPlayer = false;
-	         }
-            delete packet;
-         } // end if-else
+         if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		      CheckError(m_connectSocket.GetLastError());
+            OnDisconnect();
+	      } // end if
+         delete packet;
 	      CMenu* pNetworkMenu = NULL;
 	      CMenu* pTopMenu = AfxGetMainWnd()->GetMenu();
 	      int iPos;
@@ -3315,23 +2948,22 @@ void CMyOpenGLView::OnJoin()
          pNetworkMenu->DeleteMenu(ID_HOST, MF_BYCOMMAND);
          pNetworkMenu->DeleteMenu(ID_JOIN, MF_BYCOMMAND);
          pNetworkMenu->AppendMenu(MF_STRING, ID_DISCONNECT, "Disconnect");
+         AfxGetMainWnd()->DrawMenuBar();
 	   }
 	   else
 	   {
-		   CheckError(m_clientSocket.GetLastError());
-		   m_clientSocket.Close();
+		   CheckError(m_connectSocket.GetLastError());
+		   m_connectSocket.Close();
 	   }
-   } // end if
-	
+   } // end if	
 }
 
 
 void CMyOpenGLView::OnDisconnect() 
 {
 	// TODO: Add your command handler code here
-	m_serverSocket.Close();
-   m_receiveSocket.Close();
-	m_clientSocket.Close();
+	m_listenSocket.Close();
+	m_connectSocket.Close();
    multiPlayer = false;
    if (server) {
       server = false;
@@ -3352,15 +2984,15 @@ void CMyOpenGLView::OnDisconnect()
    pNetworkMenu->DeleteMenu(ID_DISCONNECT, MF_BYCOMMAND);
    pNetworkMenu->InsertMenu(0, MF_BYPOSITION, ID_JOIN, "Join");
    pNetworkMenu->InsertMenu(0, MF_BYPOSITION, ID_HOST, "Host");
-	
+   AfxGetMainWnd()->DrawMenuBar();	
 }
 
 
 // all of this happens once a connection is made
 void CMyOpenGLView::OnAccept()
 {
-//	if(!m_serverSocket.Accept(m_sConnectSocket))
-	if(!m_serverSocket.Accept(m_receiveSocket))
+//	if(!m_listenSocket.Accept(m_sConnectSocket))
+	if(!m_listenSocket.Accept(m_connectSocket))
 	{
 		AfxMessageBox("Accept() failed");
 		return;
@@ -3378,29 +3010,16 @@ void CMyOpenGLView::OnAccept()
    ourTank.setZ(spawnSites[spawnSite][1]);
    spawnSiteActive[spawnSite] = true;
    ourTank.setRespawnFlag(true);
-//   sndPlaySound("1492.wav", SND_LOOP | SND_ASYNC | SND_FILENAME);
    Packet *packet = new Packet;
    packet->packetType = 10;
    packet->id = spawnSite;
    packet->spawnSiteActive = true;
    int len = sizeof(*packet);
-   if (server) {
-      if (m_receiveSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	   {
-		CheckError(m_receiveSocket.GetLastError());
-		m_receiveSocket.Close();
-      multiPlayer = false;
-	   }
-      delete packet;
-   } else {
-	   if (m_clientSocket.Send((void*)packet, len) == SOCKET_ERROR)
-	   {
-		CheckError(m_clientSocket.GetLastError());
-		m_clientSocket.Close();
-      multiPlayer = false;
-	   }
-      delete packet;
-   } // end if-else
+   if (m_connectSocket.Send((void*)packet, len) == SOCKET_ERROR) {
+		CheckError(m_connectSocket.GetLastError());
+      OnDisconnect();
+	} // end if
+   delete packet;
 }
 
 
@@ -3414,17 +3033,17 @@ void CMyOpenGLView::OnReceive()
    Packet *packet = new Packet;
    int packetType;
    if (server) {
-      if (m_receiveSocket.Receive(packet, sizeof(*packet)) == SOCKET_ERROR) {
-		CheckError(m_receiveSocket.GetLastError());
-		m_receiveSocket.Close();
+      if (m_connectSocket.Receive(packet, sizeof(*packet)) == SOCKET_ERROR) {
+		CheckError(m_connectSocket.GetLastError());
+		m_connectSocket.Close();
       multiPlayer = false;
       } else {
          packetType = packet->packetType;
       } // end if-else
    } else {
-      if (m_clientSocket.Receive(packet, sizeof(*packet)) == SOCKET_ERROR) {
-		CheckError(m_clientSocket.GetLastError());
-		m_clientSocket.Close();
+      if (m_connectSocket.Receive(packet, sizeof(*packet)) == SOCKET_ERROR) {
+		CheckError(m_connectSocket.GetLastError());
+		m_connectSocket.Close();
       multiPlayer = false;
       } else {
          packetType = packet->packetType;
@@ -3524,13 +3143,15 @@ void CMyOpenGLView::OnSend()
 // executes when a client closes a connection
 void CMyOpenGLView::OnClose()
 {
-	m_serverSocket.Close();
-   m_receiveSocket.Close();
-   m_clientSocket.Close();
-   multiPlayer = false;
+   OnDisconnect();
+/*   multiPlayer = false;
    if (server) {
+   	m_listenSocket.Close();
+      m_connectSocket.Close();
       server = false;
-   } // end if
+   } else {
+      m_connectSocket.Close();
+   } // end if-else*/
 }
 
 void CMyOpenGLView::OnConnect()
@@ -3612,6 +3233,8 @@ void CMyOpenGLView::CheckError(int errorCode)
 	}// end of big switch-case
 } // end CheckError()
 
+
+// Setup code for a single-player game
 void CMyOpenGLView::OnSingle() 
 {
 	// TODO: Add your command handler code here
@@ -3624,6 +3247,7 @@ void CMyOpenGLView::OnSingle()
 //   sndPlaySound("1492.wav", SND_LOOP | SND_ASYNC | SND_FILENAME);
 }
 
+// Setup code for a multi-player game
 void CMyOpenGLView::OnMulti() 
 {
 	// TODO: Add your command handler code here
@@ -3642,17 +3266,46 @@ void CMyOpenGLView::OnMulti()
    pTopMenu->EnableMenuItem(1, MF_BYPOSITION | MF_ENABLED);
    pNetworkMenu->EnableMenuItem(ID_HOST, MF_BYCOMMAND | MF_ENABLED);
    pNetworkMenu->EnableMenuItem(ID_JOIN, MF_BYCOMMAND | MF_ENABLED);
+   AfxGetMainWnd()->DrawMenuBar();
 }
 
+
+// Cleanup code for quitting the game
 void CMyOpenGLView::OnQuit() 
 {
-	// TODO: Add your command handler code here
    if (multiPlayer) {
-	   m_serverSocket.Close();
-      m_receiveSocket.Close();
-      m_clientSocket.Close();
+	   m_listenSocket.Close();
+      m_connectSocket.Close();
    } // end if
    exit(0);
 //   SendMessage(WM_CLOSE);
 }
 
+
+DWORD CMyOpenGLView::PlayMusic(LPSTR filename){             // Play music function for MIDI files
+    DWORD dwReturn = NULL;
+    mciOpenParms.lpstrDeviceType = "sequencer";
+    mciOpenParms.lpstrElementName = filename;
+    dwReturn = mciSendCommand(NULL,MCI_OPEN,MCI_OPEN_TYPE|MCI_OPEN_ELEMENT,(DWORD)(LPVOID)&mciOpenParms);
+    if(dwReturn) {
+       return dwReturn;
+    } // end if
+    wDeviceID = mciOpenParms.wDeviceID;
+    mciPlayParms.dwCallback = (DWORD) m_hWnd;
+    dwReturn = mciSendCommand(wDeviceID,MCI_PLAY,MCI_NOTIFY,(DWORD)(LPVOID)&mciPlayParms);
+    if(dwReturn){
+       return dwReturn;
+    } // end if-else
+    return 0L;
+}//end PlayMusic
+
+
+LRESULT CMyOpenGLView::OnMCINotify(WPARAM wParam, LPARAM lParam) {
+   DWORD dwReturn = NULL;
+   mciSendCommand(wDeviceID, MCI_SEEK, MCI_SEEK_TO_START, NULL);
+   dwReturn = mciSendCommand(wDeviceID,MCI_PLAY,MCI_NOTIFY,(DWORD)(LPVOID)&mciPlayParms);
+   if(dwReturn){
+      return dwReturn;
+   } // end if-else
+   return 0L;
+}
